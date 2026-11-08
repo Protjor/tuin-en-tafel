@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Tuin &amp; Tafel · Demo</title>
+<meta name="description" content="Demo van Tuin &amp; Tafel: recepten, moestuinzaden en zaaikalender in één app.">
+<meta name="theme-color" content="#EEF1E9">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tuin &amp; Tafel">
+<script src="demo-backend.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gloock&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: seed-packet cards on a sage paper ground; a 12-month sowing strip is the recurring signature element. */
+:root{
+  --paper:#EEF1E9; --card:#FAFBF7; --ink:#1E2A21; --ink-2:#4C5A4F; --line:#D3DACC;
+  --leaf:#356B31; --leaf-soft:#DCE9D2; --beet:#8C2C5F; --beet-soft:#F1DDE8;
+  --chicory:#D9B23B; --chicory-soft:#F6ECC8; --warn:#9A4512; --warn-soft:#F7E2D3;
+  --shadow:0 1px 0 rgba(30,42,33,.06),0 6px 18px -10px rgba(30,42,33,.25);
+  --f-display:"Gloock",Georgia,"Times New Roman",serif;
+  --f-body:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#141A16; --card:#1C241E; --ink:#E7EDE3; --ink-2:#A6B3A8; --line:#2F3B32;
+  --leaf:#7DBA6E; --leaf-soft:#22351F; --beet:#D77AAB; --beet-soft:#3A1F2E;
+  --chicory:#E5C55A; --chicory-soft:#3A3219; --warn:#E89462; --warn-soft:#3B2618;
+  --shadow:0 1px 0 rgba(0,0,0,.3),0 8px 20px -12px rgba(0,0,0,.7); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#141A16; --card:#1C241E; --ink:#E7EDE3; --ink-2:#A6B3A8; --line:#2F3B32;
+  --leaf:#7DBA6E; --leaf-soft:#22351F; --beet:#D77AAB; --beet-soft:#3A1F2E;
+  --chicory:#E5C55A; --chicory-soft:#3A3219; --warn:#E89462; --warn-soft:#3B2618;
+  --shadow:0 1px 0 rgba(0,0,0,.3),0 8px 20px -12px rgba(0,0,0,.7); color-scheme:dark}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 var(--f-body);-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--paper)}
+.wrap{max-width:1080px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--f-display);font-weight:400;margin:0;text-wrap:balance;letter-spacing:.005em}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);font-weight:600}
+button,input,textarea,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--leaf);outline-offset:2px}
+
+/* header */
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:color-mix(in srgb,var(--paper) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:16px;padding-block:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:10px;margin-right:auto}
+@media (max-width:760px){nav.tabs{order:3;flex-basis:100%}}
+.brand h1{font-size:26px;line-height:1}
+.brand h1 i{font-style:normal;color:var(--beet)}
+.brand small{color:var(--ink-2);font-size:12px}
+nav.tabs{display:flex;gap:4px;overflow-x:auto;max-width:100%;scrollbar-width:none}
+nav.tabs a{padding:7px 12px;border-radius:999px;color:var(--ink-2);text-decoration:none;font-weight:600;font-size:14px;white-space:nowrap}
+nav.tabs a[aria-current="page"]{background:var(--ink);color:var(--paper)}
+nav.tabs a .n{font-family:var(--f-mono);font-size:11px;opacity:.7;margin-left:4px}
+
+main{padding-block:24px 64px;display:grid;gap:28px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.sec-head{display:flex;align-items:end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.sec-head h2{font-size:28px}
+.muted{color:var(--ink-2)}
+
+.btn{border:1px solid var(--line);background:var(--card);padding:8px 14px;border-radius:10px;cursor:pointer;font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{border-color:var(--ink-2)}
+.btn.primary{background:var(--leaf);border-color:var(--leaf);color:#fff}
+:root[data-theme="dark"] .btn.primary{color:#10180F}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .btn.primary{color:#10180F}}
+.btn.danger{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 40%,var(--line))}
+.btn.ghost{background:transparent;border-color:transparent}
+.btn.sm{padding:5px 10px;font-size:13px;border-radius:8px}
+
+.search{flex:1 1 280px;display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;min-width:0}
+.search input{border:0;background:transparent;outline:none;flex:1;min-width:0}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-size:13px;cursor:pointer;white-space:nowrap}
+.chip.on{background:var(--leaf-soft);border-color:var(--leaf);color:var(--ink)}
+.chip.beet{background:var(--beet-soft);border-color:transparent}
+.chip .dot{width:7px;height:7px;border-radius:50%;background:var(--leaf)}
+.pill{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:6px}
+.pill.ex{background:var(--chicory-soft);color:var(--ink)}
+.pill.low{background:var(--warn-soft);color:var(--warn)}
+.pill.now{background:var(--leaf-soft);color:var(--leaf)}
+
+/* recipe cards */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+.rcard{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;cursor:pointer;display:flex;flex-direction:column;text-align:left;padding:0;box-shadow:var(--shadow)}
+.rcard:hover{border-color:var(--ink-2)}
+.rcard .ph{aspect-ratio:16/10;background:var(--beet-soft);display:grid;place-items:center;overflow:hidden;max-width:100%}
+.rcard .ph img{width:100%;height:100%;object-fit:cover;display:block}
+.rcard .ph .ini{font-family:var(--f-display);font-size:44px;color:var(--beet)}
+.rcard .body{padding:12px 14px 14px;display:grid;gap:6px;min-width:0}
+.rcard h3{font-size:20px;line-height:1.2}
+.rcard .meta{font-size:12.5px;color:var(--ink-2);display:flex;gap:10px;flex-wrap:wrap}
+.rcard .hit{font-size:12.5px;color:var(--leaf);font-weight:600}
+
+/* seed packets */
+.packets{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.packet{background:var(--card);border:1px solid var(--line);border-radius:6px 6px 14px 14px;cursor:pointer;text-align:left;padding:0;position:relative;box-shadow:var(--shadow);display:flex;flex-direction:column}
+.packet::before{content:"";display:block;height:10px;border-bottom:1px dashed var(--line);background:repeating-linear-gradient(90deg,transparent 0 6px,color-mix(in srgb,var(--line) 70%,transparent) 6px 7px)}
+.packet:hover{border-color:var(--ink-2)}
+.packet .pb{padding:12px 14px 14px;display:grid;gap:10px}
+.packet .veg{font-family:var(--f-display);font-size:24px;line-height:1.1}
+.packet .ras{font-style:italic;color:var(--ink-2)}
+.packet .stock{display:flex;align-items:baseline;gap:6px}
+.packet .stock b{font-family:var(--f-mono);font-size:22px;font-weight:500}
+.packet .foot{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:12.5px;color:var(--ink-2);flex-wrap:wrap}
+
+/* the sowing strip */
+.strip{display:grid;grid-template-columns:repeat(12,1fr);gap:2px}
+.strip .m{display:grid;grid-template-rows:auto 8px 8px 8px;gap:2px;text-align:center}
+.strip .m span{font-family:var(--f-mono);font-size:10px;color:var(--ink-2)}
+.strip .m.cur span{color:var(--ink);font-weight:500;text-decoration:underline;text-underline-offset:2px}
+.strip i{display:block;border-radius:2px;background:color-mix(in srgb,var(--line) 55%,transparent)}
+.strip i.in{background:repeating-linear-gradient(135deg,var(--leaf) 0 2px,transparent 2px 4px);border:1px solid var(--leaf)}
+.strip i.out{background:var(--leaf)}
+.strip i.harv{background:var(--beet)}
+.strip.big .m{grid-template-rows:auto 14px 14px 14px}
+.strip.big .m span{font-size:12px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink-2)}
+.legend i{display:inline-block;width:14px;height:8px;border-radius:2px;vertical-align:middle;margin-right:5px}
+
+/* today */
+.today{display:grid;grid-template-columns:1.3fr 1fr;gap:16px}
+@media (max-width:760px){.today{grid-template-columns:1fr}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:12px;align-content:start;min-width:0}
+.panel h3{font-size:20px}
+.list{display:grid;gap:2px}
+.li{display:flex;align-items:center;gap:12px;padding:9px 6px;border-radius:8px;cursor:pointer;border:0;background:transparent;text-align:left;width:100%}
+.li:hover{background:var(--paper)}
+.li .t{flex:1;min-width:0}
+.li .t b{font-weight:600}
+.li .t small{display:block;color:var(--ink-2);font-size:12.5px}
+.monthbadge{font-family:var(--f-mono);font-size:11px;padding:3px 6px;border-radius:5px;background:var(--leaf-soft);color:var(--leaf);white-space:nowrap}
+.hero{display:grid;gap:6px}
+.hero .big{font-family:var(--f-display);font-size:clamp(30px,5vw,44px);line-height:1.05}
+.hero .big em{font-style:normal;color:var(--leaf)}
+.empty{padding:22px;border:1px dashed var(--line);border-radius:12px;color:var(--ink-2);text-align:center}
+
+/* calendar table */
+.tablewrap{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:14px}
+table.cal{border-collapse:collapse;width:100%;min-width:720px;font-size:13px}
+table.cal th,table.cal td{padding:8px 4px;border-bottom:1px solid var(--line);text-align:center}
+table.cal th:first-child,table.cal td:first-child{text-align:left;padding-left:14px;width:200px}
+table.cal thead th{font-family:var(--f-mono);font-weight:500;font-size:11px;color:var(--ink-2)}
+table.cal .curc{background:color-mix(in srgb,var(--chicory-soft) 70%,transparent)}
+table.cal td .cell{display:grid;gap:2px}
+table.cal td .cell i{height:6px;border-radius:2px;display:block}
+table.cal td .cell i.in{background:repeating-linear-gradient(135deg,var(--leaf) 0 2px,transparent 2px 4px);border:1px solid var(--leaf)}
+table.cal td .cell i.out{background:var(--leaf)}
+table.cal td .cell i.harv{background:var(--beet)}
+table.cal tr.click{cursor:pointer}
+table.cal tr.click:hover td{background:var(--paper)}
+
+/* sheet */
+.scrim{position:fixed;inset:0;background:rgba(15,20,16,.45);z-index:20;display:flex;justify-content:center;align-items:flex-start;overflow-y:auto;padding:max(24px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) 24px max(12px,env(safe-area-inset-left,0px))}
+.sheet{background:var(--card);width:100%;max-width:760px;border-radius:16px;box-shadow:0 20px 60px -20px rgba(0,0,0,.5);overflow:hidden}
+.sheet .sh-h{display:flex;justify-content:space-between;align-items:start;gap:12px;padding:18px 20px 0}
+.sheet .sh-b{padding:16px 20px 22px;display:grid;gap:18px}
+.sheet h2{font-size:30px;line-height:1.1}
+.gallery{display:flex;gap:8px;overflow-x:auto}
+.gallery img{height:220px;max-width:100%;border-radius:10px;object-fit:cover}
+.facts{display:flex;gap:18px;flex-wrap:wrap;padding:10px 0;border-block:1px solid var(--line)}
+.facts div{display:grid}
+.facts b{font-weight:600}
+.cols{display:grid;grid-template-columns:1fr 1.4fr;gap:24px}
+@media (max-width:640px){.cols{grid-template-columns:1fr}}
+.ing{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.ing li{padding:5px 0;border-bottom:1px dotted var(--line)}
+.ing li .g{display:inline-flex;margin-left:6px;font-size:11.5px;color:var(--leaf);font-weight:600;cursor:pointer;background:var(--leaf-soft);padding:1px 7px;border-radius:999px;border:0}
+.steps{margin:0;padding-left:22px;display:grid;gap:10px}
+.steps li::marker{font-family:var(--f-mono);color:var(--beet)}
+.note{background:var(--chicory-soft);border-radius:10px;padding:10px 14px}
+.stockctl{display:flex;align-items:center;gap:10px}
+.stockctl b{font-family:var(--f-mono);font-size:30px;font-weight:500;min-width:64px;text-align:center}
+
+/* forms */
+form.f{display:grid;gap:14px}
+.f .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.f label{display:grid;gap:5px;font-size:13px;font-weight:600;color:var(--ink-2)}
+.f input,.f textarea,.f select{background:var(--paper);border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-weight:400;color:var(--ink);width:100%;min-width:0}
+.f textarea{min-height:120px;resize:vertical}
+.monthpick{display:grid;grid-template-columns:repeat(12,1fr);gap:3px}
+.monthpick button{border:1px solid var(--line);background:var(--paper);border-radius:6px;padding:6px 0;font-family:var(--f-mono);font-size:11px;cursor:pointer}
+.monthpick.in button.on{background:var(--leaf-soft);border-color:var(--leaf)}
+.monthpick.out button.on{background:var(--leaf);border-color:var(--leaf);color:#fff}
+.monthpick.harv button.on{background:var(--beet);border-color:var(--beet);color:#fff}
+.thumbs{display:flex;gap:8px;flex-wrap:wrap}
+.thumbs figure{margin:0;position:relative}
+.thumbs img{width:90px;height:68px;object-fit:cover;border-radius:8px;display:block}
+.thumbs button{position:absolute;top:3px;right:3px;border:0;border-radius:50%;width:22px;height:22px;background:rgba(0,0,0,.6);color:#fff;cursor:pointer;line-height:1}
+.check{display:flex!important;flex-direction:row;align-items:center;gap:8px;font-weight:500!important}
+.check input{width:auto}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:10px;z-index:40;font-weight:600;font-size:14px;max-width:calc(100% - 32px)}
+.status{font-size:13px;color:var(--ink-2)}
+@media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(10px);opacity:.6}}}
+.demobar{background:var(--ink);color:var(--paper);font-size:13px}
+.demobar .wrap{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding-block:7px}
+.demobar b{background:var(--chicory);color:#1E2A21;padding:1px 8px;border-radius:6px;font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.demobar span{flex:1;min-width:0}
+.demobar .btn{background:transparent;color:var(--paper);border-color:color-mix(in srgb,var(--paper) 35%,transparent)}
+.auth{max-width:420px;margin:8vh auto 0;display:grid;gap:18px}
+.auth h2{font-size:34px}
+.err{color:var(--warn);font-weight:600;font-size:14px;min-height:1.2em}
+.copybox{display:flex;gap:8px;align-items:center}
+.copybox input{flex:1;min-width:0;font-family:var(--f-mono);font-size:12px;background:var(--paper);border:1px solid var(--line);border-radius:9px;padding:9px 11px;color:var(--ink)}
+.iconbtn{border:1px solid var(--line);background:var(--card);border-radius:999px;width:36px;height:36px;display:grid;place-items:center;cursor:pointer;font-size:16px}
+.ulist{display:grid;gap:4px}
+.ulist .u{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dotted var(--line)}
+.ulist .u div{flex:1;min-width:0}
+</style>
+</head>
+<body>
+
+<div class="demobar"><div class="wrap"><b>Demo</b><span>Probeer gerust alles uit. Je wijzigingen blijven alleen in deze browser.</span><button class="btn sm" data-act="demoreset">Demo herstellen</button></div></div>
+<header class="top"><div class="wrap">
+  <div class="brand"><h1>Tuin <i>&amp;</i> Tafel</h1><small id="sync" class="status">laden…</small></div>
+  <nav class="tabs" id="tabs">
+    <a href="#vandaag" data-v="vandaag">Vandaag</a>
+    <a href="#recepten" data-v="recepten">Recepten<span class="n" id="nR"></span></a>
+    <a href="#moestuin" data-v="moestuin">Moestuin<span class="n" id="nS"></span></a>
+    <a href="#kalender" data-v="kalender">Zaaikalender</a>
+  </nav>
+  <button class="iconbtn" id="gear" data-act="settings" aria-label="Instellingen" title="Instellingen" hidden>⚙</button>
+</div></header>
+
+<main class="wrap" id="app">
+  <div class="empty">Tuin &amp; Tafel wordt geladen…</div>
+</main>
+<div id="layer"></div>
+
+<script>
+const M=['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+const ML=['J','F','M','A','M','J','J','A','S','O','N','D'];
+const MF=['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+const NOW=new Date(), CUR=NOW.getMonth()+1;
+const S={recipes:[],seeds:[],sb:null,user:null,got:{r:false,s:false},failed:false,view:'vandaag',q:'',sq:'',cat:'',open:null,form:null};
+
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+const $=s=>document.querySelector(s);
+function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),2600)}
+
+/* ---------- domain helpers ---------- */
+const terms=seed=>[seed.groente,...String(seed.zoektermen||'').split(',')].map(norm).map(s=>s.trim()).filter(s=>s.length>2);
+function recipeText(r){return norm([r.titel,...(r.ingredienten||[])].join(' \n '))}
+function recipesForSeed(seed){const t=terms(seed);return S.recipes.filter(r=>{const x=recipeText(r);return t.some(w=>x.includes(w))})}
+function seedsForLine(line){const x=norm(line);return S.seeds.filter(s=>terms(s).some(w=>x.includes(w)))}
+function seedsForRecipe(r){const x=recipeText(r);return S.seeds.filter(s=>terms(s).some(w=>x.includes(w)))}
+const isLow=s=>Number(s.aantal||0)<=Number(s.minimum||0);
+const sowMonths=s=>[...new Set([...(s.binnen||[]),...(s.buiten||[])])];
+const sowsIn=(s,m)=>sowMonths(s).includes(m);
+function nextSow(s){for(let k=0;k<12;k++){const m=((CUR-1+k)%12)+1;if(sowsIn(s,m))return {m,k}}return null}
+function where(s,m){const a=[];if((s.binnen||[]).includes(m))a.push('binnen');if((s.buiten||[]).includes(m))a.push('buiten');return a.join(' + ')}
+function seedName(s){return s.groente+(s.ras?` ‘${s.ras}’`:'')}
+
+function strip(s,big){
+  return `<div class="strip${big?' big':''}" aria-label="Zaaikalender">${ML.map((l,i)=>{const m=i+1;
+    return `<div class="m${m===CUR?' cur':''}" title="${MF[i]}"><span>${l}</span><i class="${(s.binnen||[]).includes(m)?'in':''}"></i><i class="${(s.buiten||[]).includes(m)?'out':''}"></i><i class="${(s.oogst||[]).includes(m)?'harv':''}"></i></div>`}).join('')}</div>`}
+const legend=`<div class="legend"><span><i style="background:repeating-linear-gradient(135deg,var(--leaf) 0 2px,transparent 2px 4px);border:1px solid var(--leaf)"></i>zaaien binnen</span><span><i style="background:var(--leaf)"></i>zaaien buiten</span><span><i style="background:var(--beet)"></i>oogst</span></div>`;
+
+/* ---------- views ---------- */
+function vToday(){
+  const now=S.seeds.filter(s=>sowsIn(s,CUR));
+  const soon=S.seeds.map(s=>({s,n:nextSow(s)})).filter(x=>x.n&&x.n.k>0&&x.n.k<=3).sort((a,b)=>a.n.k-b.n.k);
+  const low=S.seeds.filter(isLow);
+  const recent=[...S.recipes].sort((a,b)=>(b.bijgewerkt||'').localeCompare(a.bijgewerkt||'')).slice(0,4);
+  const li=(s,right)=>`<button class="li" data-act="seed" data-id="${s.id}"><div class="t"><b>${esc(seedName(s))}</b><small>${esc(s.aantal??0)} ${esc(s.eenheid||'zaden')} op voorraad${recipesForSeed(s).length?` · ${recipesForSeed(s).length} recept(en)`:''}</small></div>${right}</button>`;
+  return `<section class="hero"><span class="label">${MF[CUR-1]} ${NOW.getFullYear()}</span>
+    <div class="big">${now.length?`Deze maand <em>${now.length}</em> ${now.length===1?'gewas':'gewassen'} te zaaien.`:'Deze maand niets te zaaien.'}</div>
+    <p class="muted" style="margin:0">${S.seeds.length} zaadzakjes in je doos, ${S.recipes.length} recepten in je kookboek.</p></section>
+  <div class="today">
+    <div class="panel"><div class="row" style="justify-content:space-between"><h3>Zaaien in ${MF[CUR-1]}</h3><button class="btn sm" data-act="ics">Herinneringen in agenda</button></div>
+      <div class="list">${now.length?now.map(s=>li(s,`<span class="monthbadge">${where(s,CUR)}</span>`)).join(''):`<div class="empty">Geen zaaiwerk deze maand.</div>`}</div>
+      <span class="label">Binnenkort</span>
+      <div class="list">${soon.length?soon.map(x=>li(x.s,`<span class="monthbadge">${M[x.n.m-1]} · ${where(x.s,x.n.m)}</span>`)).join(''):`<div class="muted">Niets in de komende drie maanden.</div>`}</div>
+    </div>
+    <div style="display:grid;gap:16px;align-content:start">
+      <div class="panel"><h3>Bijna op</h3><div class="list">${low.length?low.map(s=>li(s,`<span class="pill low">bijkopen</span>`)).join(''):`<div class="muted">Alle zaden boven je minimum.</div>`}</div></div>
+      <div class="panel"><h3>Laatst bewerkte recepten</h3><div class="list">${recent.length?recent.map(r=>`<button class="li" data-act="recipe" data-id="${r.id}"><div class="t"><b>${esc(r.titel)}</b><small>${esc(r.categorie||'')}${r.tijd?' · '+esc(r.tijd):''}</small></div></button>`).join(''):`<div class="muted">Nog geen recepten.</div>`}</div></div>
+    </div>
+  </div>`;
+}
+
+function filteredRecipes(){
+  const qs=S.q.split(',').map(norm).map(s=>s.trim()).filter(Boolean);
+  return S.recipes.filter(r=>(!S.cat||r.categorie===S.cat)&&qs.every(q=>recipeText(r).includes(q)||norm(r.nota).includes(q)))
+    .sort((a,b)=>a.titel.localeCompare(b.titel,'nl'));
+}
+function vRecipes(){
+  const cats=[...new Set(S.recipes.map(r=>r.categorie).filter(Boolean))].sort();
+  const list=filteredRecipes();
+  const qs=S.q.split(',').map(s=>s.trim()).filter(Boolean);
+  const garden=S.seeds.filter(s=>recipesForSeed(s).length);
+  return `<div class="sec-head"><h2>Recepten</h2><button class="btn primary" data-act="newRecipe">+ Nieuw recept</button></div>
+  <div class="row"><label class="search"><span aria-hidden="true" class="muted">⌕</span><input id="q" type="search" placeholder="Zoek op ingrediënten, bv. witloof, ham" value="${esc(S.q)}" aria-label="Zoek op ingrediënten"></label></div>
+  ${garden.length?`<div class="row"><span class="label">Uit je tuin</span>${garden.map(s=>`<button class="chip ${qs.map(norm).includes(norm(s.groente))?'on':''}" data-act="qadd" data-v="${esc(s.groente)}"><span class="dot"></span>${esc(s.groente)}</button>`).join('')}</div>`:''}
+  ${cats.length>1?`<div class="row"><span class="label">Categorie</span><button class="chip ${!S.cat?'on':''}" data-act="cat" data-v="">Alles</button>${cats.map(c=>`<button class="chip ${S.cat===c?'on':''}" data-act="cat" data-v="${esc(c)}">${esc(c)}</button>`).join('')}</div>`:''}
+  ${list.length?`<div class="grid">${list.map(rCard).join('')}</div>`:`<div class="empty">${S.recipes.length?'Geen recept met al deze ingrediënten. Haal een zoekterm weg of probeer een ander ingrediënt.':'Nog geen recepten. Klik op <b>+ Nieuw recept</b> om je eerste toe te voegen.'}</div>`}`;
+}
+function rCard(r){
+  const ph=(r.fotos||[])[0];
+  const qs=S.q.split(',').map(norm).map(s=>s.trim()).filter(Boolean);
+  const hits=qs.length?(r.ingredienten||[]).filter(l=>qs.some(q=>norm(l).includes(q))):[];
+  const g=seedsForRecipe(r);
+  return `<button class="rcard" data-act="recipe" data-id="${r.id}"><div class="ph">${ph?`<img src="${esc(ph.url)}" alt="" loading="lazy">`:`<span class="ini">${esc((r.titel||'?')[0])}</span>`}</div>
+  <div class="body"><span class="label">${esc(r.categorie||'Recept')}</span><h3>${esc(r.titel)}</h3>
+  <div class="meta">${r.personen?`<span>${esc(r.personen)} pers.</span>`:''}${r.tijd?`<span>${esc(r.tijd)}</span>`:''}${r.moeilijkheid?`<span>${esc(r.moeilijkheid)}</span>`:''}</div>
+  ${hits.length?`<div class="hit">✓ ${hits.map(esc).join(' · ')}</div>`:g.length?`<div class="hit">Uit de tuin: ${g.map(s=>esc(s.groente)).join(', ')}</div>`:''}</div></button>`;
+}
+
+function vGarden(){
+  const q=norm(S.sq);
+  const list=S.seeds.filter(s=>!q||norm([s.groente,s.ras,s.leverancier,s.notitie].join(' ')).includes(q)).sort((a,b)=>a.groente.localeCompare(b.groente,'nl'));
+  return `<div class="sec-head"><h2>Moestuin</h2><div class="row"><button class="btn" data-act="export">Back-up</button><button class="btn primary" data-act="newSeed">+ Zaadzakje</button></div></div>
+  <div class="row"><label class="search"><span aria-hidden="true" class="muted">⌕</span><input id="sq" type="search" placeholder="Zoek groente, ras of leverancier" value="${esc(S.sq)}" aria-label="Zoek in zaden"></label></div>
+  ${legend}
+  ${list.length?`<div class="packets">${list.map(sCard).join('')}</div>`:`<div class="empty">${S.seeds.length?'Geen zaden gevonden.':'Nog geen zaden. Voeg je eerste zaadzakje toe met <b>+ Zaadzakje</b>.'}</div>`}`;
+}
+function sCard(s){
+  const n=recipesForSeed(s).length;
+  return `<button class="packet" data-act="seed" data-id="${s.id}"><div class="pb">
+  <div class="row" style="justify-content:space-between;align-items:start"><div><div class="veg">${esc(s.groente)}</div>${s.ras?`<div class="ras">‘${esc(s.ras)}’</div>`:''}</div>
+  <div class="row" style="gap:4px">${s.voorbeeld?'<span class="pill ex">voorbeeld</span>':''}${sowsIn(s,CUR)?'<span class="pill now">nu zaaien</span>':''}${isLow(s)?'<span class="pill low">bijna op</span>':''}</div></div>
+  ${strip(s)}
+  <div class="foot"><span class="stock"><b>${esc(s.aantal??0)}</b>${esc(s.eenheid||'zaden')}</span><span>${n?`${n} recept${n>1?'en':''}`:'geen recepten'}${s.herinnering?' · 🔔':''}</span></div>
+  </div></button>`;
+}
+
+function vCal(){
+  const list=[...S.seeds].sort((a,b)=>{const x=nextSow(a),y=nextSow(b);return (x?x.k:99)-(y?y.k:99)});
+  return `<div class="sec-head"><h2>Zaaikalender</h2><button class="btn primary" data-act="ics">Herinneringen in agenda</button></div>
+  <p class="muted" style="margin:0;max-width:65ch">Gesorteerd op wat het eerst gezaaid moet worden. Met <b>Herinneringen in agenda</b> download je een kalenderbestand (.ics) met een jaarlijks terugkerende herinnering op de 1e van elke zaaimaand, voor elk zakje waar herinnering aan staat.</p>
+  ${legend}
+  ${list.length?`<div class="tablewrap"><table class="cal"><thead><tr><th>Gewas</th>${M.map((m,i)=>`<th class="${i+1===CUR?'curc':''}">${m}</th>`).join('')}</tr></thead><tbody>
+  ${list.map(s=>`<tr class="click" data-act="seed" data-id="${s.id}"><td><b>${esc(s.groente)}</b> <span class="muted">${esc(s.ras||'')}</span></td>${M.map((_,i)=>{const m=i+1;return `<td class="${m===CUR?'curc':''}"><div class="cell"><i class="${(s.binnen||[]).includes(m)?'in':''}"></i><i class="${(s.buiten||[]).includes(m)?'out':''}"></i><i class="${(s.oogst||[]).includes(m)?'harv':''}"></i></div></td>`}).join('')}</tr>`).join('')}
+  </tbody></table></div>`:`<div class="empty">Voeg zaden toe in Moestuin om je kalender te vullen.</div>`}`;
+}
+
+/* ---------- sheets ---------- */
+function sheet(html){$('#layer').innerHTML=`<div class="scrim" data-act="close"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;document.body.style.overflow='hidden'}
+function closeSheet(){$('#layer').innerHTML='';document.body.style.overflow='';S.open=null;S.form=null}
+
+function showRecipe(id){
+  const r=S.recipes.find(x=>x.id===id);if(!r)return;S.open={t:'r',id};
+  const g=seedsForRecipe(r);
+  sheet(`<div class="sh-h"><div><span class="label">${esc(r.categorie||'Recept')}</span><h2>${esc(r.titel)}</h2></div><button class="btn ghost" data-act="close" aria-label="Sluiten">✕</button></div>
+  <div class="sh-b">
+   ${(r.fotos||[]).length?`<div class="gallery">${r.fotos.map(f=>`<img src="${esc(f.url)}" alt="${esc(r.titel)}">`).join('')}</div>`:''}
+   <div class="facts">${r.personen?`<div><span class="label">Personen</span><b class="mono">${esc(r.personen)}</b></div>`:''}${r.moeilijkheid?`<div><span class="label">Niveau</span><b>${esc(r.moeilijkheid)}</b></div>`:''}${r.tijd?`<div><span class="label">Tijd</span><b>${esc(r.tijd)}</b></div>`:''}</div>
+   <div class="cols"><div><span class="label">Ingrediënten</span><ul class="ing">${(r.ingredienten||[]).map(l=>{const ss=seedsForLine(l);return `<li>${esc(l)}${ss.map(s=>`<button class="g" data-act="seed" data-id="${s.id}">uit tuin · ${esc(s.aantal??0)} ${esc(s.eenheid||'zaden')}</button>`).join('')}</li>`}).join('')}</ul></div>
+   <div><span class="label">Bereiding</span><ol class="steps">${(r.stappen||[]).map(l=>`<li>${esc(l)}</li>`).join('')}</ol></div></div>
+   ${r.nota?`<div class="note"><span class="label">Nota</span><div>${esc(r.nota).replace(/\n/g,'<br>')}</div></div>`:''}
+   ${g.length?`<div class="row"><span class="label">Groenten uit je tuin</span>${g.map(s=>`<button class="chip beet" data-act="seed" data-id="${s.id}">${esc(seedName(s))}</button>`).join('')}</div>`:''}
+   <div class="row" style="justify-content:space-between"><button class="btn danger" data-act="del" data-k="recipes" data-id="${r.id}">Verwijderen</button><button class="btn primary" data-act="editRecipe" data-id="${r.id}">Bewerken</button></div>
+  </div>`);
+}
+function showSeed(id){
+  const s=S.seeds.find(x=>x.id===id);if(!s)return;S.open={t:'s',id};
+  const rs=recipesForSeed(s);
+  sheet(`<div class="sh-h"><div><span class="label">Zaadzakje${s.leverancier?' · '+esc(s.leverancier):''}</span><h2>${esc(s.groente)}${s.ras?` <span class="muted" style="font-style:italic">‘${esc(s.ras)}’</span>`:''}</h2></div><button class="btn ghost" data-act="close" aria-label="Sluiten">✕</button></div>
+  <div class="sh-b">
+   ${s.voorbeeld?'<div class="note">Dit is een voorbeeldzakje om de app te tonen. Pas het aan naar je eigen zaden of verwijder het.</div>':''}
+   <div class="row" style="justify-content:space-between;gap:18px">
+     <div class="stockctl"><button class="btn" data-act="stock" data-d="-1" data-id="${s.id}" aria-label="Eén minder">−</button><b>${esc(s.aantal??0)}</b><button class="btn" data-act="stock" data-d="1" data-id="${s.id}" aria-label="Eén meer">+</button><span class="muted">${esc(s.eenheid||'zaden')}<br><small>minimum ${esc(s.minimum??0)}</small></span></div>
+     <div class="row">${isLow(s)?'<span class="pill low">bijna op</span>':''}${s.kiemkrachtTot?`<span class="muted">kiemkracht tot <b class="mono">${esc(s.kiemkrachtTot)}</b></span>`:''}</div>
+   </div>
+   ${strip(s,true)}${legend}
+   <div class="facts">${(s.binnen||[]).length?`<div><span class="label">Binnen zaaien</span><b>${s.binnen.map(m=>M[m-1]).join(', ')}</b></div>`:''}${(s.buiten||[]).length?`<div><span class="label">Buiten zaaien</span><b>${s.buiten.map(m=>M[m-1]).join(', ')}</b></div>`:''}${(s.oogst||[]).length?`<div><span class="label">Oogst</span><b>${s.oogst.map(m=>M[m-1]).join(', ')}</b></div>`:''}<div><span class="label">Herinnering</span><b>${s.herinnering?'aan':'uit'}</b></div></div>
+   ${s.notitie?`<div class="note">${esc(s.notitie).replace(/\n/g,'<br>')}</div>`:''}
+   <div style="display:grid;gap:8px"><span class="label">Recepten met ${esc(s.groente.toLowerCase())}</span>
+   ${rs.length?`<div class="list">${rs.map(r=>`<button class="li" data-act="recipe" data-id="${r.id}"><div class="t"><b>${esc(r.titel)}</b><small>${esc(r.categorie||'')}${r.tijd?' · '+esc(r.tijd):''}</small></div><span class="muted">→</span></button>`).join('')}</div>`:`<div class="muted">Nog geen recept met ${esc(s.groente.toLowerCase())}. Voeg zoektermen toe bij dit zakje (bv. “tuinkruiden”) of maak een recept.</div>`}</div>
+   <div class="row" style="justify-content:space-between"><button class="btn danger" data-act="del" data-k="seeds" data-id="${s.id}">Verwijderen</button><button class="btn primary" data-act="editSeed" data-id="${s.id}">Bewerken</button></div>
+  </div>`);
+}
+
+function recipeForm(r){
+  r=r||{titel:'',categorie:'',personen:'',moeilijkheid:'',tijd:'',ingredienten:[],stappen:[],nota:'',fotos:[]};
+  S.form={k:'recipes',id:r.id||null,fotos:[...(r.fotos||[])]};
+  const cats=[...new Set(['Groenten','Vlees','Vis','Pasta & Pizza','Soep','Dessert',...S.recipes.map(x=>x.categorie).filter(Boolean)])];
+  sheet(`<div class="sh-h"><h2>${r.id?'Recept bewerken':'Nieuw recept'}</h2><button class="btn ghost" data-act="close" aria-label="Sluiten">✕</button></div>
+  <div class="sh-b"><form class="f" id="rf">
+   <label>Titel<input id="r_titel" required value="${esc(r.titel)}"></label>
+   <div class="two"><label>Categorie<input id="r_cat" list="cats" value="${esc(r.categorie)}"><datalist id="cats">${cats.map(c=>`<option value="${esc(c)}">`).join('')}</datalist></label>
+   <label>Personen<input id="r_pers" inputmode="numeric" value="${esc(r.personen)}"></label>
+   <label>Moeilijkheid<select id="r_moe">${['','Beginner','Gevorderd','Expert'].map(o=>`<option ${o===r.moeilijkheid?'selected':''}>${o}</option>`).join('')}</select></label>
+   <label>Bereidingstijd<input id="r_tijd" value="${esc(r.tijd)}" placeholder="&lt; 60 minuten"></label></div>
+   <label>Ingrediënten <span class="muted" style="font-weight:400">één per lijn</span><textarea id="r_ing">${esc((r.ingredienten||[]).join('\n'))}</textarea></label>
+   <label>Bereiding <span class="muted" style="font-weight:400">één stap per lijn</span><textarea id="r_stap" style="min-height:160px">${esc((r.stappen||[]).join('\n'))}</textarea></label>
+   <label>Nota<textarea id="r_nota" style="min-height:70px">${esc(r.nota)}</textarea></label>
+   <div style="display:grid;gap:8px"><span class="label">Foto's</span><div class="thumbs" id="thumbs"></div>
+   <label class="btn" style="justify-self:start;cursor:pointer">+ Foto toevoegen<input id="r_foto" type="file" accept="image/*" multiple hidden></label></div>
+   <div class="row" style="justify-content:flex-end"><button type="button" class="btn" data-act="close">Annuleren</button><button class="btn primary" type="submit" id="r_save">Opslaan</button></div>
+  </form></div>`);
+  drawThumbs();
+}
+function drawThumbs(){const t=$('#thumbs');if(!t)return;t.innerHTML=S.form.fotos.map((f,i)=>`<figure><img src="${esc(f.url)}" alt=""><button type="button" data-act="rmfoto" data-i="${i}" aria-label="Foto verwijderen">×</button></figure>`).join('')}
+
+function monthPick(id,cls,sel){return `<div class="monthpick ${cls}" id="${id}">${M.map((m,i)=>`<button type="button" class="${(sel||[]).includes(i+1)?'on':''}" data-m="${i+1}" aria-pressed="${(sel||[]).includes(i+1)}">${m}</button>`).join('')}</div>`}
+function seedForm(s){
+  s=s||{groente:'',ras:'',leverancier:'',aantal:'',eenheid:'zaden',minimum:'',binnen:[],buiten:[],oogst:[],kiemkrachtTot:'',herinnering:true,zoektermen:'',notitie:''};
+  S.form={k:'seeds',id:s.id||null,voorbeeld:!!s.voorbeeld};
+  sheet(`<div class="sh-h"><h2>${s.id?'Zaadzakje bewerken':'Nieuw zaadzakje'}</h2><button class="btn ghost" data-act="close" aria-label="Sluiten">✕</button></div>
+  <div class="sh-b"><form class="f" id="sf">
+   <div class="two"><label>Groente<input id="s_groente" required value="${esc(s.groente)}" placeholder="Rodekool"></label><label>Ras<input id="s_ras" value="${esc(s.ras)}" placeholder="bv. Rodynda"></label><label>Leverancier<input id="s_lev" value="${esc(s.leverancier)}"></label></div>
+   <div class="two"><label>Voorraad<input id="s_aantal" type="number" min="0" step="any" value="${esc(s.aantal)}"></label>
+   <label>Eenheid<select id="s_eenh">${['zaden','gram','zakjes','plantjes','bollen'].map(o=>`<option ${o===s.eenheid?'selected':''}>${o}</option>`).join('')}</select></label>
+   <label>Melding onder<input id="s_min" type="number" min="0" step="any" value="${esc(s.minimum)}"></label>
+   <label>Kiemkracht tot (jaar)<input id="s_kiem" inputmode="numeric" value="${esc(s.kiemkrachtTot)}"></label></div>
+   <label>Binnen zaaien</label>${monthPick('mp_in','in',s.binnen)}
+   <label>Buiten zaaien</label>${monthPick('mp_out','out',s.buiten)}
+   <label>Oogst</label>${monthPick('mp_h','harv',s.oogst)}
+   <label class="check"><input type="checkbox" id="s_her" ${s.herinnering?'checked':''}> Herinnering om te zaaien</label>
+   <label>Extra zoektermen voor recepten <span class="muted" style="font-weight:400">komma-gescheiden, bv. “tuinkruiden, kruiden”</span><input id="s_zoek" value="${esc(s.zoektermen)}"></label>
+   <label>Notitie<textarea id="s_not" style="min-height:70px" placeholder="Plantafstand, voorkweek, ervaring…">${esc(s.notitie)}</textarea></label>
+   <div class="row" style="justify-content:flex-end"><button type="button" class="btn" data-act="close">Annuleren</button><button class="btn primary" type="submit">Opslaan</button></div>
+  </form></div>`);
+}
+const picked=id=>[...document.querySelectorAll(`#${id} button.on`)].map(b=>+b.dataset.m);
+const lines=v=>v.split('\n').map(s=>s.replace(/^\s*[-•*]\s*/,'').trim()).filter(Boolean);
+
+/* ---------- data writes ---------- */
+function rowToItem(r){return {...(r.data||{}),id:r.id,bijgewerkt:r.updated}}
+function applyRow(r){const k=r.kind==='recipes'?'recipes':'seeds';const it=rowToItem(r);const i=S[k].findIndex(x=>x.id===r.id);if(i>=0)S[k][i]=it;else S[k].push(it)}
+async function save(k,id,data){
+  if(!S.sb||!S.user){toast('Je bent niet aangemeld.');return false}
+  const clean={...data};delete clean.id;delete clean.bijgewerkt;
+  const row={kind:k,data:clean,updated:new Date().toISOString(),updated_by:S.user.id};
+  const q=id?S.sb.from('items').update(row).eq('id',id).select().single():S.sb.from('items').insert(row).select().single();
+  const {data:r,error}=await q;
+  if(error){toast('Opslaan mislukt: '+error.message);return false}
+  applyRow(r);toast('Opgeslagen');if(!S.form)render();return r.id;
+}
+async function resize(file){
+  const img=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=URL.createObjectURL(file)});
+  const k=Math.min(1,1600/Math.max(img.width,img.height));const c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
+  c.getContext('2d').drawImage(img,0,0,c.width,c.height);return await new Promise(r=>c.toBlob(r,'image/jpeg',.85));
+}
+
+/* ---------- ICS reminders ---------- */
+function groups(ms){const s=[...ms].sort((a,b)=>a-b);const g=[];for(const m of s){const last=g[g.length-1];if(last&&last[last.length-1]===m-1)last.push(m);else g.push([m])}
+  if(g.length>1&&g[0][0]===1&&g[g.length-1].slice(-1)[0]===12){g[g.length-1].push(...g.shift())}return g}
+function buildIcs(){
+  const pad=n=>String(n).padStart(2,'0');const y=NOW.getFullYear();const stamp=NOW.toISOString().replace(/[-:]/g,'').slice(0,15)+'Z';
+  const out=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Tuin en Tafel//NL','CALSCALE:GREGORIAN','X-WR-CALNAME:Zaaikalender'];
+  let n=0;
+  for(const s of S.seeds.filter(s=>s.herinnering)){
+    for(const [kind,arr] of [['binnen',s.binnen||[]],['buiten',s.buiten||[]]]){
+      for(const g of groups(arr)){
+        const m=g[0];const yr=m<CUR?y+1:y;
+        const ics=t=>String(t).replace(/[\\,;]/g,c=>'\\'+c).replace(/\n/g,'\\n');
+        out.push('BEGIN:VEVENT',`UID:${s.id}-${kind}-${m}@tuin-en-tafel`,`DTSTAMP:${stamp}`,`DTSTART;VALUE=DATE:${yr}${pad(m)}01`,`DTEND;VALUE=DATE:${yr}${pad(m)}02`,'RRULE:FREQ=YEARLY',
+          `SUMMARY:${ics(`Zaaien (${kind}): ${seedName(s)}`)}`,`DESCRIPTION:${ics(`Zaaiperiode ${kind}: ${g.map(x=>M[x-1]).join(', ')}. Voorraad: ${s.aantal??0} ${s.eenheid||'zaden'}.`)}`,
+          'BEGIN:VALARM','ACTION:DISPLAY',`DESCRIPTION:${ics('Zaaien: '+seedName(s))}`,'TRIGGER:PT9H','END:VALARM','END:VEVENT');n++;
+      }
+    }
+  }
+  out.push('END:VCALENDAR');return {text:out.join('\r\n'),n};
+}
+function offer(filename,data,label){
+  const url=URL.createObjectURL(new Blob([data],{type:filename.endsWith('.ics')?'text/calendar':'application/json'}));
+  const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),4000);toast(label);
+}
+
+/* ---------- render & events ---------- */
+function render(){
+  const v=S.view;
+  document.querySelectorAll('#tabs a').forEach(a=>{if(a.dataset.v===v)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});
+  $('#nR').textContent=S.recipes.length||'';$('#nS').textContent=S.seeds.length||'';
+  const loading=!(S.got.r&&S.got.s);
+  if(loading&&!S.failed){if(S.user)$('#app').innerHTML=`<div class="empty">Recepten en zaden laden…</div>`;return}
+  if(!S.user)return;
+  if(S.failed&&!S.got.r){$('#app').innerHTML=`<div class="empty">Je recepten en zaden konden niet geladen worden. Controleer je internetverbinding en herlaad de pagina.</div>`;return}
+  const html=v==='recepten'?vRecipes():v==='moestuin'?vGarden():v==='kalender'?vCal():vToday();
+  const fq=document.activeElement?.id;const pos=document.activeElement?.selectionStart;
+  $('#app').innerHTML=html;
+  if(fq==='q'||fq==='sq'){const el=$('#'+fq);if(el){el.focus();try{el.setSelectionRange(pos,pos)}catch(e){}}}
+  if(S.open&&!S.form){S.open.t==='r'?showRecipe(S.open.id):showSeed(S.open.id)}
+}
+function route(){const h=location.hash.slice(1);S.view=['recepten','moestuin','kalender'].includes(h)?h:'vandaag';closeSheet();render();window.scrollTo(0,0)}
+addEventListener('hashchange',route);
+
+document.addEventListener('input',e=>{if(e.target.id==='q'){S.q=e.target.value;render()}if(e.target.id==='sq'){S.sq=e.target.value;render()}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('#layer').innerHTML)closeSheet()});
+document.addEventListener('click',async e=>{
+  const mp=e.target.closest('.monthpick button');if(mp){mp.classList.toggle('on');mp.setAttribute('aria-pressed',mp.classList.contains('on'));return}
+  const el=e.target.closest('[data-act]');if(!el)return;const a=el.dataset.act,id=el.dataset.id;
+  if(a==='close'){if(e.target===el||el.tagName==='BUTTON')closeSheet();return}
+  if(a==='recipe')return showRecipe(id);
+  if(a==='seed')return showSeed(id);
+  if(a==='newRecipe')return recipeForm();
+  if(a==='editRecipe')return recipeForm(S.recipes.find(r=>r.id===id));
+  if(a==='newSeed')return seedForm();
+  if(a==='editSeed')return seedForm(S.seeds.find(s=>s.id===id));
+  if(a==='cat'){S.cat=el.dataset.v;return render()}
+  if(a==='qadd'){const v=el.dataset.v;let qs=S.q.split(',').map(s=>s.trim()).filter(Boolean);qs=qs.some(q=>norm(q)===norm(v))?qs.filter(q=>norm(q)!==norm(v)):[...qs,v];S.q=qs.join(', ');return render()}
+  if(a==='rmfoto'){S.form.fotos.splice(+el.dataset.i,1);return drawThumbs()}
+  if(a==='stock'){const s=S.seeds.find(x=>x.id===id);const v=Math.max(0,Number(s.aantal||0)+Number(el.dataset.d));const {id:_,...rest}=s;await save('seeds',id,{...rest,aantal:v});return}
+  if(a==='del'){if(el.dataset.confirm!=='1'){el.dataset.confirm='1';el.textContent='Zeker? Klik opnieuw';setTimeout(()=>{if(el.isConnected){el.dataset.confirm='';el.textContent='Verwijderen'}},4000);return}
+    const {error}=await S.sb.from('items').delete().eq('id',id);if(error){toast('Verwijderen mislukt: '+error.message);return}
+    const k=el.dataset.k;S[k]=S[k].filter(x=>x.id!==id);toast('Verwijderd');closeSheet();render();return}
+  if(await authClick(a,el))return;
+  if(a==='ics'){const {text,n}=buildIcs();if(!n){toast('Zet bij minstens één zaadzakje de herinnering aan.');return}return offer('zaaikalender.ics',text,`${n} herinneringen klaar voor je agenda`)}
+  if(a==='export'){return offer('tuin-en-tafel-backup.json',JSON.stringify({recepten:S.recipes,zaden:S.seeds},null,2),'Back-up opgeslagen')}
+});
+document.addEventListener('change',async e=>{
+  if(e.target.id==='imp_file')return importFile(e.target);
+  if(e.target.id!=='r_foto')return;const files=[...e.target.files];if(!files.length)return;
+  const btn=$('#r_save');btn.disabled=true;btn.textContent='Foto uploaden…';
+  for(const f of files){try{const b=await resize(f);const r=await uploadPhoto(b);S.form.fotos.push(r);drawThumbs()}catch(err){toast('Foto uploaden mislukt: '+(err?.message||err?.code||''))}}
+  btn.disabled=false;btn.textContent='Opslaan';e.target.value='';
+});
+document.addEventListener('submit',async e=>{
+  e.preventDefault();if(await authSubmit(e.target))return;const f=S.form;if(!f)return;
+  if(e.target.id==='rf'){
+    const d={titel:$('#r_titel').value.trim(),categorie:$('#r_cat').value.trim(),personen:$('#r_pers').value.trim(),moeilijkheid:$('#r_moe').value,tijd:$('#r_tijd').value.trim(),
+      ingredienten:lines($('#r_ing').value),stappen:lines($('#r_stap').value),nota:$('#r_nota').value.trim(),fotos:f.fotos};
+    if(!d.titel)return;const ok=await save('recipes',f.id,d);if(ok){S.form=null;closeSheet();render();showRecipe(ok)}
+  }
+  if(e.target.id==='sf'){
+    const num=v=>v===''?0:Number(v);
+    const d={groente:$('#s_groente').value.trim(),ras:$('#s_ras').value.trim(),leverancier:$('#s_lev').value.trim(),aantal:num($('#s_aantal').value),eenheid:$('#s_eenh').value,minimum:num($('#s_min').value),
+      kiemkrachtTot:$('#s_kiem').value.trim(),binnen:picked('mp_in'),buiten:picked('mp_out'),oogst:picked('mp_h'),herinnering:$('#s_her').checked,zoektermen:$('#s_zoek').value.trim(),notitie:$('#s_not').value.trim(),voorbeeld:false};
+    if(!d.groente)return;const ok=await save('seeds',f.id,d);if(ok){S.form=null;closeSheet();render();showSeed(ok)}
+  }
+});
+
+/* ---------- Supabase: login, opslag, foto's ---------- */
+const CFG=window.TT_CONFIG||{};
+async function uploadPhoto(blob){
+  const path=`${new Date().getFullYear()}/${crypto.randomUUID()}.jpg`;
+  const {error}=await S.sb.storage.from('fotos').upload(path,blob,{contentType:'image/jpeg',cacheControl:'31536000'});
+  if(error)throw error;
+  return {id:path,url:S.sb.storage.from('fotos').getPublicUrl(path).data.publicUrl};
+}
+async function insertMany(rows){
+  for(let i=0;i<rows.length;i+=200){const {error}=await S.sb.from('items').insert(rows.slice(i,i+200));if(error)throw error}
+}
+async function importData(obj,photoBase){
+  const rows=[];const now=new Date().toISOString();
+  for(const r of (obj.recepten||obj.recipes||[])){
+    if(!r||!r.titel)continue;const d={...r};delete d.id;delete d.bijgewerkt;const f=[];
+    for(const p of (r.fotos||[])){
+      if(p.starter&&photoBase){try{const b=await (await fetch(photoBase+p.starter)).blob();f.push(await uploadPhoto(b))}catch(e){}}
+      else if(p.url&&/^https?:/.test(p.url))f.push(p);
+    }
+    d.fotos=f;rows.push({kind:'recipes',data:d,updated:now,updated_by:S.user.id});
+  }
+  for(const s of (obj.zaden||obj.seeds||[])){if(!s||!s.groente)continue;const d={...s};delete d.id;delete d.bijgewerkt;rows.push({kind:'seeds',data:d,updated:now,updated_by:S.user.id})}
+  await insertMany(rows);await loadData();return rows.length;
+}
+async function importFile(input){
+  const f=input.files[0];if(!f)return;
+  try{const n=await importData(JSON.parse(await f.text()));toast(`${n} items geïmporteerd`)}catch(e){toast('Importeren mislukt: '+(e.message||e))}
+  input.value='';
+}
+
+/* ---------- schermen: aanmelden en instellingen ---------- */
+function authView(mode,msg){
+  $('#gear').hidden=true;$('#tabs').hidden=true;
+  const f={
+    login:`<form class="f" id="lf"><label>E-mailadres<input id="l_email" type="email" autocomplete="username" required></label>
+      <label>Wachtwoord<input id="l_pw" type="password" autocomplete="current-password" required></label>
+      <div class="err" id="err">${esc(msg||'')}</div>
+      <div class="row" style="justify-content:space-between"><button type="button" class="btn ghost" data-act="forgot">Wachtwoord vergeten?</button><button class="btn primary">Aanmelden</button></div></form>`,
+    recovery:`<p class="muted" style="margin:0">Kies een nieuw wachtwoord voor je account.</p><form class="f" id="pf"><label>Nieuw wachtwoord<input id="p_new" type="password" minlength="8" autocomplete="new-password" required></label>
+      <div class="err" id="err"></div><button class="btn primary" style="justify-self:end">Wachtwoord opslaan</button></form>`,
+    config:`<div class="note">Deze installatie is nog niet gekoppeld aan een database. Vul in <b>config.js</b> de Supabase-URL en de publieke sleutel in (zie LEESMIJ).</div>`
+  }[mode];
+  $('#app').innerHTML=`<section class="auth"><div><span class="label">Recepten · zaden · zaaikalender</span><h2>${mode==='recovery'?'Nieuw wachtwoord':'Aanmelden'}</h2></div>${f}</section>`;
+  $('#sync').textContent='';
+}
+function settingsSheet(){
+  sheet(`<div class="sh-h"><div><span class="label">Instellingen</span><h2>${esc(S.user.email)}</h2></div><button class="btn ghost" data-act="close" aria-label="Sluiten">✕</button></div>
+  <div class="sh-b">
+    <div style="display:grid;gap:8px"><span class="label">Zaaiherinneringen</span>
+      <p class="muted" style="margin:0">Download het agendabestand en open het op je telefoon of in Outlook/Google Agenda. Elke zaaimaand krijg je op de 1e om 9 uur een melding. Download opnieuw nadat je zaden toevoegt.</p>
+      <button class="btn" style="justify-self:start" data-act="ics">Agendabestand downloaden</button></div>
+    <div style="display:grid;gap:8px"><span class="label">Gegevens</span>
+      <div class="row"><button class="btn" data-act="export">Back-up downloaden</button>
+      <label class="btn" style="cursor:pointer">Back-up importeren<input id="imp_file" type="file" accept="application/json,.json" hidden></label>
+      <button class="btn" data-act="starter">Voorbeeldrecepten laden</button></div></div>
+    <form class="f" id="cpf"><span class="label">Wachtwoord wijzigen</span><div class="two"><label>Nieuw wachtwoord<input id="c_new" type="password" minlength="8" autocomplete="new-password" required></label></div>
+      <div class="err" id="cerr"></div><button class="btn" style="justify-self:start">Wachtwoord opslaan</button></form>
+    <p class="muted" style="margin:0">Gebruikers toevoegen of verwijderen doe je in Supabase onder Authentication → Users. Iedereen met een account ziet en bewerkt dezelfde recepten en zaden.</p>
+    <div class="row" style="justify-content:flex-end"><button class="btn danger" data-act="logout">Afmelden</button></div>
+  </div>`);
+}
+async function authClick(a,el){
+  if(a==='settings'){settingsSheet();return true}
+  if(a==='logout'){await S.sb.auth.signOut();return true}
+  if(a==='forgot'){const em=$('#l_email')?.value.trim();if(!em){$('#err').textContent='Vul eerst je e-mailadres in.';return true}
+    const {error}=await S.sb.auth.resetPasswordForEmail(em,{redirectTo:location.origin+location.pathname});
+    $('#err').textContent=error?error.message:'Als dit adres een account heeft, staat er nu een mail met een herstel-link in je inbox.';return true}
+  if(a==='starter'){if(el.dataset.confirm!=='1'){el.dataset.confirm='1';el.textContent='Zeker? Klik opnieuw';return true}
+    el.disabled=true;el.textContent='Bezig…';
+    try{const n=await importData(await (await fetch('starter/starter.json')).json(),'starter/photos/');toast(`${n} voorbeelditems geladen`);closeSheet()}catch(e){toast('Laden mislukt: '+(e.message||e));el.disabled=false;el.textContent='Voorbeeldrecepten laden'}
+    return true}
+  return false;
+}
+async function authSubmit(form){
+  if(form.id==='lf'){
+    const btn=form.querySelector('.primary');btn.disabled=true;
+    const {error}=await S.sb.auth.signInWithPassword({email:$('#l_email').value.trim(),password:$('#l_pw').value});
+    btn.disabled=false;if(error)$('#err').textContent=error.message==='Invalid login credentials'?'E-mailadres of wachtwoord klopt niet.':error.message;
+    return true}
+  if(form.id==='pf'||form.id==='cpf'){
+    const pw=(form.id==='pf'?$('#p_new'):$('#c_new')).value;const errEl=form.id==='pf'?$('#err'):$('#cerr');
+    const {error}=await S.sb.auth.updateUser({password:pw});
+    if(error){errEl.textContent=error.message;return true}
+    toast('Wachtwoord opgeslagen');if(form.id==='pf'){S.recovery=false;startApp(S.user)}else closeSheet();
+    return true}
+  return false;
+}
+
+/* ---------- data laden en live bijwerken ---------- */
+async function loadData(){
+  const {data,error}=await S.sb.from('items').select('id,kind,data,updated').order('updated',{ascending:false}).limit(10000);
+  if(error){S.failed=true;$('#sync').textContent='fout bij laden';toast('Laden mislukt: '+error.message);render();return}
+  S.recipes=data.filter(r=>r.kind==='recipes').map(rowToItem);S.seeds=data.filter(r=>r.kind==='seeds').map(rowToItem);
+  S.got={r:true,s:true};S.failed=false;$('#sync').textContent='';if(!S.form)render();
+}
+function subscribe(){
+  if(S.channel)return;
+  S.channel=S.sb.channel('items').on('postgres_changes',{event:'*',schema:'public',table:'items'},p=>{
+    if(p.eventType==='DELETE'){const id=p.old?.id;S.recipes=S.recipes.filter(x=>x.id!==id);S.seeds=S.seeds.filter(x=>x.id!==id)}
+    else applyRow(p.new);
+    if(!S.form)render();
+  }).subscribe(st=>{if(st==='SUBSCRIBED')$('#sync').textContent=''});
+}
+function startApp(user){
+  S.user=user;$('#gear').hidden=false;$('#tabs').hidden=false;
+  route();loadData();subscribe();
+}
+function stopApp(){
+  S.user=null;S.recipes=[];S.seeds=[];S.got={r:false,s:false};
+  if(S.channel){S.sb.removeChannel(S.channel);S.channel=null}
+  closeSheet();authView('login');
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&S.user)loadData()});
+
+/* ---------- boot ---------- */
+(()=>{
+  if(!CFG.supabaseUrl||!CFG.supabaseKey||/JOUW/.test(CFG.supabaseUrl)||!window.supabase){authView('config');return}
+  S.sb=window.supabase.createClient(CFG.supabaseUrl,CFG.supabaseKey,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+  S.sb.auth.onAuthStateChange((ev,session)=>{
+    if(ev==='PASSWORD_RECOVERY'){S.recovery=true;S.user=session?.user||null;authView('recovery');return}
+    if(S.recovery)return;
+    const u=session?.user||null;
+    if(u&&(!S.user||S.user.id!==u.id))startApp(u);
+    else if(!u&&(S.user||ev==='INITIAL_SESSION'||ev==='SIGNED_OUT'))stopApp();
+  });
+})();
+</script>
+<script src="demo-overrides.js"></script>
+</body>
+</html>
