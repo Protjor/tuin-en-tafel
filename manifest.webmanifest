@@ -1,0 +1,15 @@
+{
+  "name": "Tuin & Tafel",
+  "short_name": "Tuin & Tafel",
+  "description": "Recepten, moestuinzaden en zaaikalender",
+  "start_url": "./#vandaag",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#EEF1E9",
+  "theme_color": "#EEF1E9",
+  "lang": "nl",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}
