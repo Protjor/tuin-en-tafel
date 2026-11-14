@@ -443,7 +443,7 @@ function catSheet(){
   S.open={t:'c'};const cats=allCats();
   sheet(`<div class="sh-h"><div><span class="label">Recepten</span><h2>Categorieën</h2></div><button class="btn ghost" data-act="close" aria-label="Sluiten">✕</button></div>
   <div class="sh-b">
-   <form class="f" id="catf"><label>Nieuwe categorie<div class="row" style="flex-wrap:nowrap"><input id="cat_new" placeholder="bv. Ovenschotels" autocomplete="off"><button class="btn primary" type="submit">Toevoegen</button></div></label></form>
+   <form class="f" id="catf"><span class="label">Nieuwe categorie</span><div class="row" style="flex-wrap:nowrap"><input id="cat_new" placeholder="bv. Ovenschotels" autocomplete="off" enterkeyhint="done" aria-label="Naam nieuwe categorie" style="flex:1"><button class="btn primary" type="button" data-act="catAdd">Toevoegen</button></div></form>
    ${!cats.length?`<div class="row"><span class="muted">Of begin met een standaardlijst:</span><button class="btn sm" data-act="catDefaults">${DEFCATS.join(', ')}</button></div>`:''}
    <div>${cats.map(c=>{const n=catCount(c);return `<div class="catrow"><input value="${esc(c)}" aria-label="Naam van categorie ${esc(c)}"><span class="muted mono" style="font-size:12px">${n} recept${n===1?'':'en'}</span><button class="btn sm" data-act="catRen" data-v="${esc(c)}">Naam opslaan</button><button class="btn sm danger" data-act="catDel" data-v="${esc(c)}">Verwijderen</button></div>`}).join('')}</div>
    <p class="muted" style="margin:0;font-size:13px">Een recept in een categorie zetten doe je bij <b>Bewerken</b> van het recept. Verwijder je een categorie die in gebruik is, dan blijven de recepten gewoon bestaan, zonder categorie.</p>
@@ -675,6 +675,7 @@ document.addEventListener('click',async e=>{
   if(a==='newSeed')return seedForm();
   if(a==='editSeed')return seedForm(S.seeds.find(s=>s.id===id));
   if(a==='cat'){S.cat=el.dataset.v;return render()}
+  if(a==='catAdd'){const inp=$('#cat_new');if(!inp.value.trim()){inp.focus();toast('Typ eerst een naam voor de categorie');return}if(await addCat(inp.value))render();return}
   if(a==='cats'){catSheet();setTimeout(()=>$('#cat_new')?.focus(),50);return}
   if(a==='catDefaults'){el.disabled=true;for(const c of DEFCATS)await addCat(c,true);toast('Standaardcategorieën toegevoegd');render();return}
   if(a==='catRen'){const inp=el.parentElement.querySelector('input');return renameCat(el.dataset.v,inp.value)}
