@@ -311,7 +311,7 @@ function vRecipes(){
   const list=filteredRecipes();
   const qs=S.q.split(',').map(s=>s.trim()).filter(Boolean);
   const garden=S.seeds.filter(s=>recipesForSeed(s).length);
-  return `<div class="sec-head"><h2>Recepten</h2><button class="btn primary" data-act="newRecipe">+ Nieuw recept</button></div>
+  return `<div class="sec-head"><h2>Recepten</h2><div class="row"><label class="btn" style="cursor:pointer" title="Recept inlezen uit een Word-bestand (.docx)">Uit Word…<input id="docx_in" type="file" accept=".docx,.doc,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple hidden></label><button class="btn primary" data-act="newRecipe">+ Nieuw recept</button></div></div>
   <div class="row"><label class="search"><span aria-hidden="true" class="muted">⌕</span><input id="q" type="search" placeholder="Zoek op ingrediënten, bv. witloof, ham" value="${esc(S.q)}" aria-label="Zoek op ingrediënten"></label></div>
   <div class="row"><span class="label">Categorie</span><button class="chip ${!S.cat?'on':''}" data-act="cat" data-v="">Alles <span class="c">${S.recipes.length}</span></button>${cats.map(c=>`<button class="chip ${S.cat===c?'on':''}" data-act="cat" data-v="${esc(c)}">${esc(c)} <span class="c">${catCount(c)}</span></button>`).join('')}<button class="chip add" data-act="cats">+ Categorie / beheren</button></div>
   <div class="row"><span class="label">Uit je tuin</span>${garden.length?garden.map(s=>`<button class="chip ${qs.map(norm).includes(norm(s.groente))?'on':''}" data-act="qadd" data-v="${esc(s.groente)}"><span class="dot"></span>${esc(s.groente)}</button>`).join(''):`<span class="muted" style="font-size:13px">nog geen groenten uit je moestuin in deze recepten</span>`}</div>
@@ -360,7 +360,7 @@ function vCal(){
 
 /* ---------- sheets ---------- */
 function sheet(html){$('#layer').innerHTML=`<div class="scrim" data-act="close"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;document.body.style.overflow='hidden'}
-function closeSheet(){$('#layer').innerHTML='';document.body.style.overflow='';S.open=null;S.form=null}
+function closeSheet(){$('#layer').innerHTML='';S.impQ=null;document.body.style.overflow='';S.open=null;S.form=null}
 
 function showRecipe(id){
   const r=S.recipes.find(x=>x.id===id);if(!r)return;S.open={t:'r',id};
@@ -544,6 +544,89 @@ function offer(filename,data,label){
   setTimeout(()=>URL.revokeObjectURL(url),4000);toast(label);
 }
 
+/* ---------- Word (.docx) inlezen ---------- */
+async function unzip(buf){
+  const dv=new DataView(buf);let e=buf.byteLength-22;
+  while(e>=0&&dv.getUint32(e,true)!==0x06054b50)e--;
+  if(e<0)throw new Error('dit is geen geldig Word-bestand (.docx)');
+  const n=dv.getUint16(e+10,true);let o=dv.getUint32(e+16,true);const files={};
+  for(let i=0;i<n;i++){
+    const comp=dv.getUint16(o+10,true),csz=dv.getUint32(o+20,true),nl=dv.getUint16(o+28,true),xl=dv.getUint16(o+30,true),cl=dv.getUint16(o+32,true),lo=dv.getUint32(o+42,true);
+    files[new TextDecoder().decode(new Uint8Array(buf,o+46,nl))]={comp,csz,lo};o+=46+nl+xl+cl;
+  }
+  return async name=>{const f=files[name];if(!f)return null;
+    const s=f.lo+30+dv.getUint16(f.lo+26,true)+dv.getUint16(f.lo+28,true);const data=new Uint8Array(buf,s,f.csz);
+    if(f.comp===0)return data;
+    return new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer())};
+}
+async function readDocx(file){
+  if(/\.doc$/i.test(file.name))throw new Error('oud Word-formaat (.doc). Open het in Word en kies Opslaan als → .docx');
+  const get=await unzip(await file.arrayBuffer());
+  const xml=await get('word/document.xml');if(!xml)throw new Error('dit is geen Word-bestand (.docx)');
+  const P=b=>new DOMParser().parseFromString(new TextDecoder().decode(b),'application/xml');
+  const W='http://schemas.openxmlformats.org/wordprocessingml/2006/main',A='http://schemas.openxmlformats.org/drawingml/2006/main',R='http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+  const rels={};const rb=await get('word/_rels/document.xml.rels');
+  if(rb)for(const r of P(rb).getElementsByTagName('Relationship'))rels[r.getAttribute('Id')]=r.getAttribute('Target');
+  const paras=[],imgIds=[];
+  for(const p of P(xml).getElementsByTagNameNS(W,'p')){
+    let t='';for(const x of p.getElementsByTagNameNS(W,'*')){if(x.localName==='t')t+=x.textContent;else if(x.localName==='tab')t+=' ';else if(x.localName==='br'||x.localName==='cr')t+='\n'}
+    const st=(p.getElementsByTagNameNS(W,'pStyle')[0]?.getAttributeNS(W,'val')||'').toLowerCase();
+    const list=p.getElementsByTagNameNS(W,'numPr').length>0||/list/.test(st);
+    for(const b of p.getElementsByTagNameNS(A,'blip')){const id=b.getAttributeNS(R,'embed');if(id&&rels[id]&&!imgIds.includes(id))imgIds.push(id)}
+    for(const l of t.split('\n'))if(l.trim())paras.push({t:l.trim(),st,list});
+  }
+  const images=[];
+  for(const id of imgIds){const tg=rels[id].replace(/^\//,'');const path=tg.startsWith('word/')?tg:'word/'+tg;
+    const ext=(path.split('.').pop()||'').toLowerCase();const type={jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',gif:'image/gif',webp:'image/webp'}[ext];
+    if(!type)continue;const d=await get(path);if(d)images.push(new Blob([d],{type}))}
+  return {paras,images};
+}
+function parseRecipe(paras,fname){
+  const r={titel:'',categorie:'',personen:'',moeilijkheid:'',tijd:'',ingredienten:[],stappen:[],nota:''};
+  let sec='kop';const loose=[],nota=[];
+  const head=(t,re)=>t.length<45&&re.test(norm(t));
+  const after=t=>t.includes(':')?t.slice(t.indexOf(':')+1).trim():'';
+  const lvl={beginner:'Beginner',makkelijk:'Beginner',eenvoudig:'Beginner',gemiddeld:'Gevorderd',gevorderd:'Gevorderd',moeilijk:'Expert',expert:'Expert'};
+  for(const p of paras){
+    const t=p.t,n=norm(t);
+    if(head(t,/^(ingredi|benodigdheden|nodig\b|wat heb je nodig)/)){sec='ing';const a=after(t);if(a)r.ingredienten.push(a);continue}
+    if(head(t,/^(bereiding(?!stijd)|werkwijze|instructies|stappen|aanpak|zo maak|recept\s*:?$)/)){sec='stap';const a=after(t);if(a)r.stappen.push(a);continue}
+    if(head(t,/^(tip|tips|nota|opmerking|serveertip|variatie|weetje)/)){sec='nota';const a=after(t);if(a)nota.push(a);continue}
+    if(sec!=='stap'&&t.length<70){
+      const m=n.match(/(\d+)\s*(personen|persoon|pers\b|porties)/);if(m&&!r.personen&&!(sec==='ing'&&!/^(voor|aantal|personen)/.test(n))){r.personen=m[1];continue}
+      const lv=n.match(/^(?:moeilijkheid(?:sgraad)?|niveau)?\s*:?\s*(beginner|makkelijk|eenvoudig|gemiddeld|gevorderd|moeilijk|expert)\s*$/);if(lv&&!r.moeilijkheid){r.moeilijkheid=lvl[lv[1]];continue}
+      if(!r.tijd&&sec!=='ing'&&/\b(min|minuten|uur|kwartier)\b/.test(n)&&(/tijd/.test(n)||/^[<±~\d]/.test(n))){r.tijd=t.replace(/^(bereidings|kook|oven)?tijd\s*:?\s*/i,'');continue}
+      if(/^categorie\s*:/.test(n)){r.categorie=after(t);continue}
+    }
+    if(!r.titel&&sec==='kop'){r.titel=t;continue}
+    if(sec==='ing')r.ingredienten.push(t.replace(/^[-•*·▪–]\s*/,''));
+    else if(sec==='stap')r.stappen.push(t.replace(/^(\d+\s*[.)]|stap\s*\d+\s*:?)\s*/i,''));
+    else if(sec==='nota')nota.push(t);
+    else loose.push(p);
+  }
+  if(!r.ingredienten.length&&!r.stappen.length){
+    for(const p of loose){if(p.list&&!r.stappen.length)r.ingredienten.push(p.t.replace(/^[-•*·▪–]\s*/,''));else r.stappen.push(p.t.replace(/^(\d+\s*[.)])\s*/,''))}
+  }else nota.unshift(...loose.map(p=>p.t));
+  r.nota=nota.join('\n');if(!r.titel)r.titel=fname.replace(/\.docx?$/i,'');
+  return r;
+}
+async function importWord(files){
+  const out=[];toast(files.length>1?`${files.length} Word-bestanden lezen…`:'Word-bestand lezen…');
+  for(const f of files){
+    try{const {paras,images}=await readDocx(f);const r=parseRecipe(paras,f.name);r.fotos=[];
+      for(const b of images.slice(0,4)){try{const ph=await storePhoto(b);if(ph)r.fotos.push(ph)}catch(e){}}
+      out.push({r,name:f.name})}
+    catch(e){toast(`${f.name}: ${e.message||'kon niet gelezen worden'}`)}
+  }
+  if(!out.length)return;S.impQ=out;S.impN=out.length;nextImport();
+}
+function nextImport(){
+  const x=S.impQ.shift();if(!x){S.impQ=null;return}const i=S.impN-S.impQ.length;
+  recipeForm(x.r);
+  $('#rf').insertAdjacentHTML('afterbegin',`<div class="note">Ingelezen uit <b>${esc(x.name)}</b>${S.impN>1?` (${i} van ${S.impN})`:''}. Kijk even na of titel, ingrediënten en stappen goed staan, kies eventueel een categorie en klik op <b>Opslaan</b>.</div>`);
+}
+async function storePhoto(b){return uploadPhoto(await resize(b))}
+
 /* ---------- render & events ---------- */
 function render(){
   const v=S.view;
@@ -597,6 +680,7 @@ document.addEventListener('click',async e=>{
   if(a==='export'){return offer('tuin-en-tafel-backup.json',JSON.stringify({recepten:S.recipes,zaden:S.seeds,categorieen:S.catDocs.map(c=>c.naam)},null,2),'Back-up opgeslagen')}
 });
 document.addEventListener('change',async e=>{
+  if(e.target.id==='docx_in'){const fs=[...e.target.files];e.target.value='';if(fs.length)await importWord(fs);return}
   if(e.target.id==='imp_file')return importFile(e.target);
   if(e.target.id==='r_cat'){const nw=e.target.value==='__new';$('#r_catnew_l').hidden=!nw;if(nw)$('#r_catnew').focus();return}
   if(e.target.id!=='r_foto')return;const files=[...e.target.files];if(!files.length)return;
@@ -613,7 +697,7 @@ document.addEventListener('submit',async e=>{
     else if(cat&&!allCats().includes(cat))await addCat(cat,true);
     const d={titel:$('#r_titel').value.trim(),categorie:cat,personen:$('#r_pers').value.trim(),moeilijkheid:$('#r_moe').value,tijd:$('#r_tijd').value.trim(),
       ingredienten:lines($('#r_ing').value),stappen:lines($('#r_stap').value),nota:$('#r_nota').value.trim(),fotos:f.fotos};
-    if(!d.titel)return;const ok=await save('recipes',f.id,d);if(ok){S.form=null;closeSheet();render();showRecipe(ok)}
+    if(!d.titel)return;const ok=await save('recipes',f.id,d);if(ok){const q=S.impQ;S.form=null;closeSheet();render();if(q&&q.length){S.impQ=q;nextImport()}else showRecipe(ok)}
   }
   if(e.target.id==='sf'){
     const num=v=>v===''?0:Number(v);
