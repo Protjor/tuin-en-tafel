@@ -1,7 +1,8 @@
 /* Tuin & Tafel · koppeling met Supabase
-   Vul hieronder de Project URL en de "anon public" key in (Supabase → Project Settings → API).
-   Zolang dit leeg is, draait de site als demo (gegevens alleen in de browser). */
+   Project URL en publishable key (Supabase → Project Settings → API Keys).
+   Beide mogen publiek zijn: de gegevens zitten achter de login (zie setup.sql).
+   Maak je dit leeg, dan draait de site weer als demo. */
 window.TT_CONFIG = {
-  supabaseUrl: '',
-  supabaseKey: ''
+  supabaseUrl: 'https://bphliwoqntwuoyeoyttv.supabase.co',
+  supabaseKey: 'sb_publishable_siAOxhtnC8id-PolCASDFw_KjsO8EM1'
 };
