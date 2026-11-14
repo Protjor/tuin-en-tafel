@@ -41,7 +41,7 @@ Toevoegen of verwijderen: Supabase → *Authentication* → *Users*. Iedereen me
 
 - `index.html` – de app
 - `config.js` – koppeling met Supabase
-- `vendor/supabase.js` – Supabase-bibliotheek (lokaal, v2.45.4)
+- `vendor/supabase.js` – Supabase-bibliotheek (lokaal, v2.119.0)
 - `setup.sql` – databank, rechten, fotobucket
 - `demo-backend.js`, `demo-overrides.js` – alleen gebruikt zolang config.js leeg is
 - `starter/` – voorbeeldrecepten, foto's en video
