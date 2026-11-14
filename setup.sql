@@ -23,6 +23,11 @@ create policy "aangemeld toevoegen" on public.items for insert to authenticated 
 create policy "aangemeld wijzigen"  on public.items for update to authenticated using (true) with check (true);
 create policy "aangemeld wissen"    on public.items for delete to authenticated using (true);
 
+-- Rechten voor de app (ook nodig als "Automatically expose new tables" uit staat)
+grant usage on schema public to anon, authenticated;
+grant select, insert, update, delete on public.items to authenticated;
+revoke all on public.items from anon;
+
 -- 3. Live bijwerken tussen toestellen
 do $$ begin
   alter publication supabase_realtime add table public.items;
