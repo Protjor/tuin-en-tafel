@@ -11,7 +11,13 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Tuin &amp; Tafel">
-<script src="demo-backend.js"></script>
+<script src="config.js"></script>
+<script>
+/* Live met Supabase zodra config.js is ingevuld, anders demo in de browser */
+window.TT_LIVE=!!(window.TT_CONFIG&&/^https:\/\/[\w-]+\.supabase\.co\/?$/.test(TT_CONFIG.supabaseUrl||'')&&TT_CONFIG.supabaseKey);
+if(TT_LIVE){document.documentElement.classList.add('live');document.title='Tuin & Tafel'}
+document.write(TT_LIVE?'<script src="vendor/supabase.js"><\/script>':'<script src="demo-backend.js"><\/script>');
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gloock&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
@@ -214,6 +220,7 @@ details.how p{margin:8px 0 0;color:var(--ink-2)}
 .vidwrap{display:flex;justify-content:center;background:#000;border-radius:12px;overflow:hidden}
 .vidwrap video{display:block;max-width:100%;max-height:72vh;width:auto}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(10px);opacity:.6}}}
+html.live .demobar{display:none}
 .demobar{background:var(--ink);color:var(--paper);font-size:13px}
 .demobar .wrap{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding-block:7px}
 .demobar b{background:var(--chicory);color:#1E2A21;padding:1px 8px;border-radius:6px;font-size:11px;letter-spacing:.08em;text-transform:uppercase}
@@ -854,6 +861,6 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
   });
 })();
 </script>
-<script src="demo-overrides.js"></script>
+<script>if(!window.TT_LIVE)document.write('<script src="demo-overrides.js"><\/script>')</script>
 </body>
 </html>

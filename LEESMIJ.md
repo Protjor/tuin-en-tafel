@@ -1,45 +1,47 @@
-# Tuin & Tafel · Demo op GitHub Pages
+# Tuin & Tafel
 
-Deze map is de demo-versie. Ze werkt zonder server, zonder login en zonder Supabase.
+Recepten, moestuinzaden en zaaikalender in één app. Draait gratis op GitHub Pages.
 
-- Bij het eerste bezoek staan er 3 voorbeeldrecepten en 5 voorbeeldzaden klaar.
-- Bezoekers kunnen alles uitproberen. Hun wijzigingen blijven alleen in hun eigen browser.
-- Met **Demo herstellen** begint de demo opnieuw.
+- **config.js leeg** → demo: alles blijft in de browser van de bezoeker, met demobalk bovenaan.
+- **config.js ingevuld** → echte app: aanmelden, alles centraal bewaard in Supabase (gratis plan), live gesynchroniseerd tussen toestellen.
 
-## Online zetten (zonder git, alles in de browser)
+## Live zetten met Supabase (eenmalig, ±15 minuten)
 
-1. Maak een account op github.com, of meld je aan.
-2. Maak een nieuwe repository aan:
-   - Klik rechtsboven op **+ → New repository**.
-   - Naam: `tuin-en-tafel`.
-   - Kies **Public** (gratis GitHub Pages vereist dat).
-   - Klik **Create repository**.
-3. Zet de bestanden erin:
-   - Klik op **uploading an existing file**.
-   - Sleep **de inhoud** van deze map in het venster: `index.html`, de `.js`-bestanden, de pictogrammen, `manifest.webmanifest` en de map `starter`.
-   - Sleep de bestanden zelf, niet de map `demo` eromheen.
-   - Klik **Commit changes**.
-4. Zet de website aan:
-   - Ga naar **Settings → Pages**.
-   - Bij *Source* kies je **Deploy from a branch**.
-   - Kies branch **main** en map **/ (root)**.
-   - Klik **Save**.
-5. Na 1 à 2 minuten staat de demo op `https://JOUW-GEBRUIKERSNAAM.github.io/tuin-en-tafel/`. De link verschijnt bovenaan in **Settings → Pages**.
+1. **Account en project**
+   - Ga naar supabase.com → *Start your project* en maak een gratis account.
+   - *New project*: naam `tuin-en-tafel`, kies een databankwachtwoord (bewaar het), regio **West EU (Ireland)** of **Central EU (Frankfurt)**.
+   - Wacht tot het project klaar is (1–2 minuten).
+2. **Databank opzetten**
+   - Links: *SQL Editor* → *New query*.
+   - Plak de volledige inhoud van `setup.sql` en klik op *Run*. Je ziet "Success".
+3. **Aanmelden instellen**
+   - *Authentication* → *Sign In / Providers* → zet **Allow new users to sign up** UIT (zo kan niemand zelf een account maken).
+   - *Authentication* → *URL Configuration*:
+     - Site URL: `https://protjor.github.io/tuin-en-tafel/`
+     - Redirect URLs: voeg `https://protjor.github.io/tuin-en-tafel/` toe (nodig voor "wachtwoord vergeten").
+   - *Authentication* → *Users* → *Add user* → *Create new user*: e-mailadres van SH + een wachtwoord, vink **Auto Confirm User** aan. Doe hetzelfde voor jezelf als je wilt meekijken.
+4. **Sleutels**
+   - *Project Settings* → *API* (of *Data API*): kopieer de **Project URL** en de **anon public** key.
+   - Vul ze in `config.js` in (of geef ze aan Claude). Deze twee mogen publiek zijn; de gegevens zitten achter de login.
+5. **Eerste keer aanmelden**
+   - Open `https://protjor.github.io/tuin-en-tafel/`, meld aan.
+   - ⚙ → *Voorbeeldrecepten laden* zet de 3 recepten (met foto's en de witloof-video) en 5 voorbeeldzaden in de databank. De voorbeeldzaden kan je daarna wissen met *Voorbeelden verwijderen* in Moestuin.
 
-## Bijwerken
+## Wakker houden
 
-Upload de gewijzigde bestanden opnieuw via **Add file → Upload files**. Bestaande bestanden worden overschreven. De site is binnen een paar minuten bijgewerkt.
+Een gratis Supabase-project pauzeert na een week zonder activiteit. De GitHub Action *Supabase wakker houden* (`.github/workflows/wakker-houden.yml`) stuurt elke dag één kleine vraag naar de databank. Controleer in de repo onder **Actions** dat ze groen is. GitHub zet geplande acties stil als er 60 dagen niets aan de repo verandert; je krijgt dan een mail en kan ze met één klik terug aanzetten.
 
-## Eigen domein (optioneel)
+Staat het project toch op pauze: Supabase-dashboard → project → *Restore project*.
 
-Je kunt bv. `demo.jouwdomein.be` gebruiken:
+## Gebruikers
 
-1. Vul het domein in onder **Settings → Pages → Custom domain**.
-2. Maak bij je domeinbeheerder (bv. Easyhost) een CNAME-record aan voor `demo` dat verwijst naar `JOUW-GEBRUIKERSNAAM.github.io`.
-3. Vink daarna **Enforce HTTPS** aan.
+Toevoegen of verwijderen: Supabase → *Authentication* → *Users*. Iedereen met een account ziet en bewerkt dezelfde recepten en zaden.
 
-## Goed om te weten
+## Bestanden
 
-- De code is openbaar zichtbaar in de repository. Er staan geen sleutels of persoonlijke gegevens in.
-- De browser bewaart maar een paar MB. Na een tiental eigen foto's kan het geheugen vol raken. De demo meldt dat dan, en "Demo herstellen" maakt weer plaats.
-- De volledige versie (login, live synchronisatie tussen toestellen, foto's in de cloud) zit in `tuin-en-tafel.zip` met Supabase.
+- `index.html` – de app
+- `config.js` – koppeling met Supabase
+- `vendor/supabase.js` – Supabase-bibliotheek (lokaal, v2.45.4)
+- `setup.sql` – databank, rechten, fotobucket
+- `demo-backend.js`, `demo-overrides.js` – alleen gebruikt zolang config.js leeg is
+- `starter/` – voorbeeldrecepten, foto's en video
