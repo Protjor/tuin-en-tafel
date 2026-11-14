@@ -13,7 +13,12 @@
     photos={};store(PKEY,photos);persist();
   }
   window.ttDemoReset=async()=>{try{localStorage.removeItem(KEY);localStorage.removeItem(PKEY)}catch(e){}await seed();location.reload()};
-  const ready=items?Promise.resolve():seed().catch(()=>{items=[]});
+  async function migrate(){ // bestaande demo's: video's uit de startset toevoegen aan recepten die er nog geen hebben
+    try{const d=await (await fetch('starter/starter.json',{cache:'no-cache'})).json();let ch=false;
+      for(const s of (d.recepten||[]).filter(x=>x.video))for(const it of items)if(it.kind==='recipes'&&it.data&&it.data.titel===s.titel&&!it.data.video){it.data.video=s.video;it.data.videoPoster=s.videoPoster||'';ch=true}
+      if(ch)persist()}catch(e){}
+  }
+  const ready=items?migrate():seed().catch(()=>{items=[]});
   function q(){let op='select',payload=null,id=null,single=false;const b={
     select(){return b},order(){return b},limit(){return b},single(){single=true;return b},
     insert(p){op='insert';payload=p;return b},update(p){op='update';payload=p;return b},delete(){op='delete';return b},eq(k,v){id=v;return b},

@@ -93,7 +93,9 @@
     {
      "starter": "witloof.jpg"
     }
-   ]
+   ],
+   "video": "starter/videos/witloof-teaser.mp4",
+   "videoPoster": "starter/videos/witloof-teaser.jpg"
   }
  ],
  "zaden": [

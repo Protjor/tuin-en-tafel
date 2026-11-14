@@ -209,6 +209,10 @@ details.how p{margin:8px 0 0;color:var(--ink-2)}
 .catrow input{flex:1 1 160px;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-width:0}
 .chip .c{font-family:var(--f-mono);font-size:11px;opacity:.6}
 .chip.add{border-style:dashed;color:var(--ink-2)}
+.vidlink{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:1px solid var(--line);background:var(--beet-soft);border-radius:12px;padding:10px 14px;cursor:pointer;font-weight:600;color:var(--ink)}
+.vidlink .play{flex:none;width:36px;height:36px;border-radius:50%;background:var(--beet);color:#fff;display:grid;place-items:center;font-size:14px}
+.vidwrap{display:flex;justify-content:center;background:#000;border-radius:12px;overflow:hidden}
+.vidwrap video{display:block;max-width:100%;max-height:72vh;width:auto}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(10px);opacity:.6}}}
 .demobar{background:var(--ink);color:var(--paper);font-size:13px}
 .demobar .wrap{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding-block:7px}
@@ -269,6 +273,7 @@ const sowsIn=(s,m)=>sowMonths(s).includes(m);
 function nextSow(s){for(let k=0;k<12;k++){const m=((CUR-1+k)%12)+1;if(sowsIn(s,m))return {m,k}}return null}
 function where(s,m){const a=[];if((s.binnen||[]).includes(m))a.push('binnen');if((s.buiten||[]).includes(m))a.push('buiten');return a.join(' + ')}
 function seedName(s){return s.groente+(s.ras?` ‘${s.ras}’`:'')}
+const absUrl=u=>{try{return new URL(u,location.href).href}catch(e){return u}};
 const DEFCATS=['Voorgerecht','Soep','Hoofdgerecht','Groenten','Vlees','Vis','Pasta & Pizza','Dessert'];
 function allCats(){return [...new Set([...S.catDocs.map(c=>c.naam),...S.recipes.map(r=>r.categorie)].filter(Boolean))].sort((a,b)=>a.localeCompare(b,'nl'))}
 const catCount=c=>S.recipes.filter(r=>r.categorie===c).length;
@@ -325,7 +330,7 @@ function rCard(r){
   const g=seedsForRecipe(r);
   return `<button class="rcard" data-act="recipe" data-id="${r.id}"><div class="ph">${ph?`<img src="${esc(ph.url)}" alt="" loading="lazy">`:`<span class="ini">${esc((r.titel||'?')[0])}</span>`}</div>
   <div class="body"><span class="label">${esc(r.categorie||'Recept')}</span><h3>${esc(r.titel)}</h3>
-  <div class="meta">${r.personen?`<span>${esc(r.personen)} pers.</span>`:''}${r.tijd?`<span>${esc(r.tijd)}</span>`:''}${r.moeilijkheid?`<span>${esc(r.moeilijkheid)}</span>`:''}</div>
+  <div class="meta">${r.personen?`<span>${esc(r.personen)} pers.</span>`:''}${r.tijd?`<span>${esc(r.tijd)}</span>`:''}${r.moeilijkheid?`<span>${esc(r.moeilijkheid)}</span>`:''}${r.video?'<span>▶ video</span>':''}</div>
   ${hits.length?`<div class="hit">✓ ${hits.map(esc).join(' · ')}</div>`:g.length?`<div class="hit">Uit de tuin: ${g.map(s=>esc(s.groente)).join(', ')}</div>`:''}</div></button>`;
 }
 
@@ -368,6 +373,7 @@ function showRecipe(id){
   sheet(`<div class="sh-h"><div><span class="label">${esc(r.categorie||'Recept')}</span><h2>${esc(r.titel)}</h2></div><button class="btn ghost" data-act="close" aria-label="Sluiten">✕</button></div>
   <div class="sh-b">
    ${(r.fotos||[]).length?`<div class="gallery">${r.fotos.map(f=>`<img src="${esc(f.url)}" alt="${esc(r.titel)}">`).join('')}</div>`:''}
+   ${r.video?`<button class="vidlink" data-act="video" data-id="${r.id}"><span class="play" aria-hidden="true">▶</span><span>Hier kan je video teaser zien van het recept</span></button>`:''}
    <div class="facts">${r.personen?`<div><span class="label">Personen</span><b class="mono">${esc(r.personen)}</b></div>`:''}${r.moeilijkheid?`<div><span class="label">Niveau</span><b>${esc(r.moeilijkheid)}</b></div>`:''}${r.tijd?`<div><span class="label">Tijd</span><b>${esc(r.tijd)}</b></div>`:''}</div>
    <div class="cols"><div><span class="label">Ingrediënten</span><ul class="ing">${(r.ingredienten||[]).map(l=>{const ss=seedsForLine(l);return `<li>${esc(l)}${ss.map(s=>`<button class="g" data-act="seed" data-id="${s.id}">uit tuin · ${esc(s.aantal??0)} ${esc(s.eenheid||'zaden')}</button>`).join('')}</li>`}).join('')}</ul></div>
    <div><span class="label">Bereiding</span><ol class="steps">${(r.stappen||[]).map(l=>`<li>${esc(l)}</li>`).join('')}</ol></div></div>
@@ -400,6 +406,7 @@ function shareText(r){
   if((r.ingredienten||[]).length)L.push('','INGREDIËNTEN',...r.ingredienten.map(l=>'• '+l));
   if((r.stappen||[]).length)L.push('','BEREIDING',...r.stappen.map((l,i)=>`${i+1}. ${l}`));
   if(r.nota)L.push('','Tip: '+r.nota);
+  if(r.video)L.push('','Video teaser: '+absUrl(r.video));
   L.push('','Uit het receptenboek van Tuin & Tafel');return L.join('\n');
 }
 const fileName=t=>(t||'recept').replace(/[^\w\- ]+/g,'').trim()||'recept';
@@ -421,6 +428,15 @@ function shareSheet(id){
    <textarea class="sharetext" id="shtxt" readonly aria-label="Recepttekst om te delen">${esc(txt)}</textarea>
    <div class="row" style="justify-content:space-between"><button class="btn" data-act="recipe" data-id="${r.id}">← Terug naar recept</button><button class="btn" data-act="shTxt" data-id="${r.id}">Opslaan als tekstbestand</button></div>
    ${(r.fotos||[]).length?'<p class="muted" style="margin:0;font-size:13px">Met <b>Delen via…</b> gaat de eerste foto mee (op telefoon). Via de WhatsApp- of e-mailknop gaat alleen de tekst.</p>':''}
+  </div>`);
+}
+function videoSheet(id){
+  const r=S.recipes.find(x=>x.id===id);if(!r||!r.video)return;S.open={t:'v',id};
+  const yt=String(r.video).match(/(?:youtu\.be\/|v=|shorts\/)([\w-]{11})/);
+  sheet(`<div class="sh-h"><div><span class="label">Video teaser</span><h2>${esc(r.titel)}</h2></div><button class="btn ghost" data-act="close" aria-label="Sluiten">✕</button></div>
+  <div class="sh-b">
+   <div class="vidwrap">${yt?`<iframe src="https://www.youtube-nocookie.com/embed/${yt[1]}" style="width:100%;aspect-ratio:16/9;border:0" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen title="${esc(r.titel)}"></iframe>`:`<video src="${esc(r.video)}" ${r.videoPoster?`poster="${esc(r.videoPoster)}"`:''} controls autoplay playsinline preload="metadata"></video>`}</div>
+   <div class="row" style="justify-content:space-between"><button class="btn" data-act="recipe" data-id="${r.id}">← Terug naar recept</button><button class="btn" data-act="share" data-id="${r.id}">↗ Recept delen</button></div>
   </div>`);
 }
 function catSheet(){
@@ -455,7 +471,7 @@ async function deleteCat(c){
 
 function recipeForm(r){
   r=r||{titel:'',categorie:S.cat||'',personen:'',moeilijkheid:'',tijd:'',ingredienten:[],stappen:[],nota:'',fotos:[]};
-  S.form={k:'recipes',id:r.id||null,fotos:[...(r.fotos||[])]};
+  S.form={k:'recipes',id:r.id||null,fotos:[...(r.fotos||[])],video:r.video||'',videoPoster:r.videoPoster||''};
   let cats=allCats();if(!cats.length)cats=[...DEFCATS];if(r.categorie&&!cats.includes(r.categorie))cats.push(r.categorie);
   sheet(`<div class="sh-h"><h2>${r.id?'Recept bewerken':'Nieuw recept'}</h2><button class="btn ghost" data-act="close" aria-label="Sluiten">✕</button></div>
   <div class="sh-b"><form class="f" id="rf">
@@ -468,6 +484,7 @@ function recipeForm(r){
    <label>Ingrediënten <span class="muted" style="font-weight:400">één per lijn</span><textarea id="r_ing">${esc((r.ingredienten||[]).join('\n'))}</textarea></label>
    <label>Bereiding <span class="muted" style="font-weight:400">één stap per lijn</span><textarea id="r_stap" style="min-height:160px">${esc((r.stappen||[]).join('\n'))}</textarea></label>
    <label>Nota<textarea id="r_nota" style="min-height:70px">${esc(r.nota)}</textarea></label>
+   <label>Video-link <span class="muted" style="font-weight:400">optioneel, bv. een YouTube-link of een link naar een .mp4</span><input id="r_video" type="url" inputmode="url" value="${esc(r.video||'')}" placeholder="https://…"></label>
    <div style="display:grid;gap:8px"><span class="label">Foto's</span><div class="thumbs" id="thumbs"></div>
    <label class="btn" style="justify-self:start;cursor:pointer">+ Foto toevoegen<input id="r_foto" type="file" accept="image/*" multiple hidden></label></div>
    <div class="row" style="justify-content:flex-end"><button type="button" class="btn" data-act="close">Annuleren</button><button class="btn primary" type="submit" id="r_save">Opslaan</button></div>
@@ -640,7 +657,7 @@ function render(){
   const fq=document.activeElement?.id;const pos=document.activeElement?.selectionStart;
   $('#app').innerHTML=html;
   if(fq==='q'||fq==='sq'){const el=$('#'+fq);if(el){el.focus();try{el.setSelectionRange(pos,pos)}catch(e){}}}
-  const o=S.open;if(o&&!S.form){if(o.t==='r')showRecipe(o.id);else if(o.t==='s')showSeed(o.id);else if(o.t==='c')catSheet();else if(o.t==='sh')shareSheet(o.id)}
+  const o=S.open;if(o&&!S.form){if(o.t==='r')showRecipe(o.id);else if(o.t==='s')showSeed(o.id);else if(o.t==='c')catSheet();else if(o.t==='sh')shareSheet(o.id);else if(o.t==='v'&&!document.querySelector('.vidwrap'))videoSheet(o.id)}
 }
 function route(){const h=location.hash.slice(1);S.view=['recepten','moestuin','kalender'].includes(h)?h:'vandaag';closeSheet();render();window.scrollTo(0,0)}
 addEventListener('hashchange',route);
@@ -663,6 +680,7 @@ document.addEventListener('click',async e=>{
   if(a==='catRen'){const inp=el.parentElement.querySelector('input');return renameCat(el.dataset.v,inp.value)}
   if(a==='catDel'){const n=catCount(el.dataset.v);if(n&&el.dataset.confirm!=='1'){el.dataset.confirm='1';el.textContent=`${n} recept${n>1?'en':''} – zeker?`;setTimeout(()=>{if(el.isConnected){el.dataset.confirm='';el.textContent='Verwijderen'}},4000);return}return deleteCat(el.dataset.v)}
   if(a==='share')return shareSheet(id);
+  if(a==='video')return videoSheet(id);
   if(a==='shNative'){const r=S.recipes.find(x=>x.id===id);const data={title:r.titel,text:shareText(r)};if(S.shareFile)data.files=[S.shareFile];
     try{await navigator.share(data)}catch(err){if(err?.name==='AbortError')return;if(data.files){try{delete data.files;await navigator.share(data);return}catch(e2){if(e2?.name==='AbortError')return}}toast('Delen lukt hier niet; gebruik WhatsApp, e-mail of kopiëren.')}return}
   if(a==='shCopy'){const t=$('#shtxt');const done=()=>toast('Recept gekopieerd – plak het in je bericht');try{await navigator.clipboard.writeText(t.value);done()}catch(err){t.focus();t.select();try{document.execCommand('copy')?done():toast('Tekst is geselecteerd – kopieer hem zelf')}catch(e2){toast('Tekst is geselecteerd – kopieer hem zelf')}}return}
@@ -696,7 +714,7 @@ document.addEventListener('submit',async e=>{
     let cat=$('#r_cat').value;if(cat==='__new'){cat=$('#r_catnew').value.trim();const ex=allCats().find(c=>norm(c)===norm(cat));if(ex)cat=ex;else if(cat)await addCat(cat,true)}
     else if(cat&&!allCats().includes(cat))await addCat(cat,true);
     const d={titel:$('#r_titel').value.trim(),categorie:cat,personen:$('#r_pers').value.trim(),moeilijkheid:$('#r_moe').value,tijd:$('#r_tijd').value.trim(),
-      ingredienten:lines($('#r_ing').value),stappen:lines($('#r_stap').value),nota:$('#r_nota').value.trim(),fotos:f.fotos};
+      ingredienten:lines($('#r_ing').value),stappen:lines($('#r_stap').value),nota:$('#r_nota').value.trim(),fotos:f.fotos,video:$('#r_video').value.trim(),videoPoster:($('#r_video').value.trim()===(f.video||''))?(f.videoPoster||''):''};
     if(!d.titel)return;const ok=await save('recipes',f.id,d);if(ok){const q=S.impQ;S.form=null;closeSheet();render();if(q&&q.length){S.impQ=q;nextImport()}else showRecipe(ok)}
   }
   if(e.target.id==='sf'){
