@@ -503,6 +503,7 @@ function recipeForm(r){
    <label>Bereiding <span class="muted" style="font-weight:400">één stap per lijn</span><textarea id="r_stap" style="min-height:160px">${esc((r.stappen||[]).join('\n'))}</textarea></label>
    <label>Nota<textarea id="r_nota" style="min-height:70px">${esc(r.nota)}</textarea></label>
    <label>Video-link <span class="muted" style="font-weight:400">optioneel, bv. een YouTube-link of een link naar een .mp4</span><input id="r_video" type="url" inputmode="url" value="${esc(r.video||'')}" placeholder="https://…"></label>
+   <div class="row"><label class="btn" style="cursor:pointer">🎬 Video uploaden<input id="r_vidfile" type="file" accept="video/*" hidden></label><span class="muted" id="vidstat" style="font-size:13px">${r.video?'Er hangt al een video aan dit recept.':'Kies een filmpje van je gsm of computer (max. 50 MB).'}</span></div>
    <div style="display:grid;gap:8px"><span class="label">Foto's</span><div class="thumbs" id="thumbs"></div>
    <label class="btn" style="justify-self:start;cursor:pointer">+ Foto toevoegen<input id="r_foto" type="file" accept="image/*" multiple hidden></label></div>
    <div class="row" style="justify-content:flex-end"><button type="button" class="btn" data-act="close">Annuleren</button><button class="btn primary" type="submit" id="r_save">Opslaan</button></div>
@@ -891,6 +892,15 @@ document.addEventListener('drop',async e=>{if(!S.user||!isDocx(e))return;e.preve
   const fs=[...e.dataTransfer.files].filter(f=>/\.docx?$/i.test(f.name));if(!fs.length){toast('Sleep een Word-bestand (.docx)');return}
   if(location.hash!=='#recepten')location.hash='#recepten';await importWord(fs)});
 document.addEventListener('change',async e=>{
+  if(e.target.id==='r_vidfile'){const f=e.target.files[0];e.target.value='';if(!f)return;
+    if(!window.TT_LIVE){toast('Video uploaden kan alleen in de volledige versie met aanmelden.');return}
+    if(f.size>50*1024*1024){toast('Dit filmpje is te groot (max. 50 MB). Kort het in of zet het op YouTube en plak de link.');return}
+    const btn=$('#r_save'),st=$('#vidstat');btn.disabled=true;st.textContent='Video uploaden… even geduld';
+    try{const ext=(f.name.split('.').pop()||'mp4').toLowerCase().replace(/[^a-z0-9]/g,'')||'mp4';const path=`video/${new Date().getFullYear()}/${crypto.randomUUID()}.${ext}`;
+      const {error}=await S.sb.storage.from('fotos').upload(path,f,{contentType:f.type||'video/mp4',cacheControl:'31536000'});if(error)throw error;
+      $('#r_video').value=S.sb.storage.from('fotos').getPublicUrl(path).data.publicUrl;st.textContent='✓ Video klaar. Klik op Opslaan.'}
+    catch(err){st.textContent='';toast('Video uploaden mislukt: '+(err?.message||''))}
+    btn.disabled=false;return}
   if(e.target.id==='docx_in'){const fs=[...e.target.files];e.target.value='';if(fs.length)await importWord(fs);return}
   if(e.target.id==='imp_file')return importFile(e.target);
   if(e.target.id==='r_cat'){const nw=e.target.value==='__new';$('#r_catnew_l').hidden=!nw;if(nw)$('#r_catnew').focus();return}
