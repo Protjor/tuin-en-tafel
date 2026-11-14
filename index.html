@@ -199,6 +199,16 @@ form.f{display:grid;gap:14px}
 
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:10px;z-index:40;font-weight:600;font-size:14px;max-width:calc(100% - 32px)}
 .status{font-size:13px;color:var(--ink-2)}
+details.how{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 14px;max-width:760px}
+details.how summary{cursor:pointer;font-weight:600;font-size:14px}
+details.how p{margin:8px 0 0;color:var(--ink-2)}
+.sharetext{width:100%;min-height:200px;background:var(--paper);border:1px solid var(--line);border-radius:9px;padding:9px 11px;font:13px/1.45 var(--f-mono);color:var(--ink);resize:vertical}
+.shbtns{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+.shbtns .btn{justify-content:center;text-decoration:none;color:inherit}
+.catrow{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px dotted var(--line);flex-wrap:wrap}
+.catrow input{flex:1 1 160px;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-width:0}
+.chip .c{font-family:var(--f-mono);font-size:11px;opacity:.6}
+.chip.add{border-style:dashed;color:var(--ink-2)}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(10px);opacity:.6}}}
 .demobar{background:var(--ink);color:var(--paper);font-size:13px}
 .demobar .wrap{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding-block:7px}
@@ -240,7 +250,7 @@ const M=['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'
 const ML=['J','F','M','A','M','J','J','A','S','O','N','D'];
 const MF=['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
 const NOW=new Date(), CUR=NOW.getMonth()+1;
-const S={recipes:[],seeds:[],sb:null,user:null,got:{r:false,s:false},failed:false,view:'vandaag',q:'',sq:'',cat:'',open:null,form:null};
+const S={recipes:[],seeds:[],catDocs:[],shareFile:null,sb:null,user:null,got:{r:false,s:false},failed:false,view:'vandaag',q:'',sq:'',cat:'',open:null,form:null};
 
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const norm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
@@ -259,6 +269,9 @@ const sowsIn=(s,m)=>sowMonths(s).includes(m);
 function nextSow(s){for(let k=0;k<12;k++){const m=((CUR-1+k)%12)+1;if(sowsIn(s,m))return {m,k}}return null}
 function where(s,m){const a=[];if((s.binnen||[]).includes(m))a.push('binnen');if((s.buiten||[]).includes(m))a.push('buiten');return a.join(' + ')}
 function seedName(s){return s.groente+(s.ras?` ‘${s.ras}’`:'')}
+const DEFCATS=['Voorgerecht','Soep','Hoofdgerecht','Groenten','Vlees','Vis','Pasta & Pizza','Dessert'];
+function allCats(){return [...new Set([...S.catDocs.map(c=>c.naam),...S.recipes.map(r=>r.categorie)].filter(Boolean))].sort((a,b)=>a.localeCompare(b,'nl'))}
+const catCount=c=>S.recipes.filter(r=>r.categorie===c).length;
 
 function strip(s,big){
   return `<div class="strip${big?' big':''}" aria-label="Zaaikalender">${ML.map((l,i)=>{const m=i+1;
@@ -294,15 +307,16 @@ function filteredRecipes(){
     .sort((a,b)=>a.titel.localeCompare(b.titel,'nl'));
 }
 function vRecipes(){
-  const cats=[...new Set(S.recipes.map(r=>r.categorie).filter(Boolean))].sort();
+  const cats=allCats();
   const list=filteredRecipes();
   const qs=S.q.split(',').map(s=>s.trim()).filter(Boolean);
   const garden=S.seeds.filter(s=>recipesForSeed(s).length);
   return `<div class="sec-head"><h2>Recepten</h2><button class="btn primary" data-act="newRecipe">+ Nieuw recept</button></div>
   <div class="row"><label class="search"><span aria-hidden="true" class="muted">⌕</span><input id="q" type="search" placeholder="Zoek op ingrediënten, bv. witloof, ham" value="${esc(S.q)}" aria-label="Zoek op ingrediënten"></label></div>
-  ${garden.length?`<div class="row"><span class="label">Uit je tuin</span>${garden.map(s=>`<button class="chip ${qs.map(norm).includes(norm(s.groente))?'on':''}" data-act="qadd" data-v="${esc(s.groente)}"><span class="dot"></span>${esc(s.groente)}</button>`).join('')}</div>`:''}
-  ${cats.length>1?`<div class="row"><span class="label">Categorie</span><button class="chip ${!S.cat?'on':''}" data-act="cat" data-v="">Alles</button>${cats.map(c=>`<button class="chip ${S.cat===c?'on':''}" data-act="cat" data-v="${esc(c)}">${esc(c)}</button>`).join('')}</div>`:''}
-  ${list.length?`<div class="grid">${list.map(rCard).join('')}</div>`:`<div class="empty">${S.recipes.length?'Geen recept met al deze ingrediënten. Haal een zoekterm weg of probeer een ander ingrediënt.':'Nog geen recepten. Klik op <b>+ Nieuw recept</b> om je eerste toe te voegen.'}</div>`}`;
+  <div class="row"><span class="label">Categorie</span><button class="chip ${!S.cat?'on':''}" data-act="cat" data-v="">Alles <span class="c">${S.recipes.length}</span></button>${cats.map(c=>`<button class="chip ${S.cat===c?'on':''}" data-act="cat" data-v="${esc(c)}">${esc(c)} <span class="c">${catCount(c)}</span></button>`).join('')}<button class="chip add" data-act="cats">+ Categorie / beheren</button></div>
+  <div class="row"><span class="label">Uit je tuin</span>${garden.length?garden.map(s=>`<button class="chip ${qs.map(norm).includes(norm(s.groente))?'on':''}" data-act="qadd" data-v="${esc(s.groente)}"><span class="dot"></span>${esc(s.groente)}</button>`).join(''):`<span class="muted" style="font-size:13px">nog geen groenten uit je moestuin in deze recepten</span>`}</div>
+  <details class="how"><summary>Hoe werkt “Uit je tuin”?</summary><p>Je hoeft niets zelf te linken. Elk zaadzakje dat je bij <b>Moestuin</b> invult, wordt automatisch gekoppeld aan elk recept waarin die groente in de titel of bij de ingrediënten staat. Per groente verschijnt hierboven een knop: tik erop en je ziet alle recepten met die groente (tik op meerdere voor recepten met alles samen). In het recept zelf staat naast het ingrediënt “uit tuin” met je voorraad.</p><p>Heet de groente in je recepten anders, bv. “witlof” in plaats van “witloof” of “tuinkruiden”, vul die woorden dan in bij <b>Extra zoektermen</b> van het zaadzakje.</p></details>
+  ${list.length?`<div class="grid">${list.map(rCard).join('')}</div>`:`<div class="empty">${!S.recipes.length?'Nog geen recepten. Klik op <b>+ Nieuw recept</b> om je eerste toe te voegen.':S.cat&&!S.q.trim()?`Nog geen recepten in “${esc(S.cat)}”. Kies deze categorie bij <b>Bewerken</b> van een recept, of maak een nieuw recept.`:'Geen recept met al deze ingrediënten. Haal een zoekterm weg of probeer een ander ingrediënt.'}</div>`}`;
 }
 function rCard(r){
   const ph=(r.fotos||[])[0];
@@ -320,6 +334,7 @@ function vGarden(){
   const list=S.seeds.filter(s=>!q||norm([s.groente,s.ras,s.leverancier,s.notitie].join(' ')).includes(q)).sort((a,b)=>a.groente.localeCompare(b.groente,'nl'));
   return `<div class="sec-head"><h2>Moestuin</h2><div class="row"><button class="btn" data-act="export">Back-up</button><button class="btn primary" data-act="newSeed">+ Zaadzakje</button></div></div>
   <div class="row"><label class="search"><span aria-hidden="true" class="muted">⌕</span><input id="sq" type="search" placeholder="Zoek groente, ras of leverancier" value="${esc(S.sq)}" aria-label="Zoek in zaden"></label></div>
+  ${S.seeds.some(s=>s.voorbeeld)?`<div class="note row" style="justify-content:space-between"><span>Er ${S.seeds.filter(s=>s.voorbeeld).length===1?'staat nog 1 voorbeeldzakje':`staan nog ${S.seeds.filter(s=>s.voorbeeld).length} voorbeeldzakjes`} in je moestuin. Liever van nul beginnen?</span><button class="btn sm danger" data-act="delEx">Voorbeelden verwijderen</button></div>`:''}
   ${legend}
   ${list.length?`<div class="packets">${list.map(sCard).join('')}</div>`:`<div class="empty">${S.seeds.length?'Geen zaden gevonden.':'Nog geen zaden. Voeg je eerste zaadzakje toe met <b>+ Zaadzakje</b>.'}</div>`}`;
 }
@@ -358,7 +373,7 @@ function showRecipe(id){
    <div><span class="label">Bereiding</span><ol class="steps">${(r.stappen||[]).map(l=>`<li>${esc(l)}</li>`).join('')}</ol></div></div>
    ${r.nota?`<div class="note"><span class="label">Nota</span><div>${esc(r.nota).replace(/\n/g,'<br>')}</div></div>`:''}
    ${g.length?`<div class="row"><span class="label">Groenten uit je tuin</span>${g.map(s=>`<button class="chip beet" data-act="seed" data-id="${s.id}">${esc(seedName(s))}</button>`).join('')}</div>`:''}
-   <div class="row" style="justify-content:space-between"><button class="btn danger" data-act="del" data-k="recipes" data-id="${r.id}">Verwijderen</button><button class="btn primary" data-act="editRecipe" data-id="${r.id}">Bewerken</button></div>
+   <div class="row" style="justify-content:space-between"><button class="btn danger" data-act="del" data-k="recipes" data-id="${r.id}">Verwijderen</button><div class="row"><button class="btn" data-act="share" data-id="${r.id}">↗ Delen</button><button class="btn primary" data-act="editRecipe" data-id="${r.id}">Bewerken</button></div></div>
   </div>`);
 }
 function showSeed(id){
@@ -380,14 +395,73 @@ function showSeed(id){
   </div>`);
 }
 
+function shareText(r){
+  const L=[r.titel];const meta=[r.personen&&r.personen+' personen',r.tijd,r.moeilijkheid].filter(Boolean).join(' · ');if(meta)L.push(meta);
+  if((r.ingredienten||[]).length)L.push('','INGREDIËNTEN',...r.ingredienten.map(l=>'• '+l));
+  if((r.stappen||[]).length)L.push('','BEREIDING',...r.stappen.map((l,i)=>`${i+1}. ${l}`));
+  if(r.nota)L.push('','Tip: '+r.nota);
+  L.push('','Uit het receptenboek van Tuin & Tafel');return L.join('\n');
+}
+const fileName=t=>(t||'recept').replace(/[^\w\- ]+/g,'').trim()||'recept';
+function shareSheet(id){
+  const r=S.recipes.find(x=>x.id===id);if(!r)return;
+  if(!S.open||S.open.t!=='sh'||S.open.id!==id){S.shareFile=null;const f=(r.fotos||[])[0];
+    if(f&&navigator.canShare){fetch(f.url).then(x=>x.blob()).then(b=>{const file=new File([b],fileName(r.titel)+'.jpg',{type:b.type||'image/jpeg'});if(navigator.canShare({files:[file]}))S.shareFile=file}).catch(()=>{})}}
+  S.open={t:'sh',id};
+  const txt=shareText(r);const enc=encodeURIComponent(txt);
+  sheet(`<div class="sh-h"><div><span class="label">Recept delen</span><h2>${esc(r.titel)}</h2></div><button class="btn ghost" data-act="close" aria-label="Sluiten">✕</button></div>
+  <div class="sh-b">
+   <p class="muted" style="margin:0">Zo komt het recept bij je kinderen aan: als gewone tekst in WhatsApp, een sms of e-mail. Ze hebben de app niet nodig.</p>
+   <div class="shbtns">
+    ${navigator.share?`<button class="btn primary" data-act="shNative" data-id="${r.id}">↗ Delen via…</button>`:''}
+    <a class="btn" href="https://wa.me/?text=${enc}" target="_blank" rel="noopener">WhatsApp</a>
+    <a class="btn" href="mailto:?subject=${encodeURIComponent('Recept: '+r.titel)}&body=${enc}">E-mail</a>
+    <button class="btn" data-act="shCopy">Tekst kopiëren</button>
+   </div>
+   <textarea class="sharetext" id="shtxt" readonly aria-label="Recepttekst om te delen">${esc(txt)}</textarea>
+   <div class="row" style="justify-content:space-between"><button class="btn" data-act="recipe" data-id="${r.id}">← Terug naar recept</button><button class="btn" data-act="shTxt" data-id="${r.id}">Opslaan als tekstbestand</button></div>
+   ${(r.fotos||[]).length?'<p class="muted" style="margin:0;font-size:13px">Met <b>Delen via…</b> gaat de eerste foto mee (op telefoon). Via de WhatsApp- of e-mailknop gaat alleen de tekst.</p>':''}
+  </div>`);
+}
+function catSheet(){
+  S.open={t:'c'};const cats=allCats();
+  sheet(`<div class="sh-h"><div><span class="label">Recepten</span><h2>Categorieën</h2></div><button class="btn ghost" data-act="close" aria-label="Sluiten">✕</button></div>
+  <div class="sh-b">
+   <form class="f" id="catf"><label>Nieuwe categorie<div class="row" style="flex-wrap:nowrap"><input id="cat_new" placeholder="bv. Ovenschotels" autocomplete="off"><button class="btn primary" type="submit">Toevoegen</button></div></label></form>
+   ${!cats.length?`<div class="row"><span class="muted">Of begin met een standaardlijst:</span><button class="btn sm" data-act="catDefaults">${DEFCATS.join(', ')}</button></div>`:''}
+   <div>${cats.map(c=>{const n=catCount(c);return `<div class="catrow"><input value="${esc(c)}" aria-label="Naam van categorie ${esc(c)}"><span class="muted mono" style="font-size:12px">${n} recept${n===1?'':'en'}</span><button class="btn sm" data-act="catRen" data-v="${esc(c)}">Naam opslaan</button><button class="btn sm danger" data-act="catDel" data-v="${esc(c)}">Verwijderen</button></div>`}).join('')}</div>
+   <p class="muted" style="margin:0;font-size:13px">Een recept in een categorie zetten doe je bij <b>Bewerken</b> van het recept. Verwijder je een categorie die in gebruik is, dan blijven de recepten gewoon bestaan, zonder categorie.</p>
+  </div>`);
+}
+async function addCat(naam,quiet){
+  naam=String(naam||'').trim();if(!naam)return false;
+  if(allCats().some(c=>norm(c)===norm(naam))){if(!quiet)toast('Die categorie bestaat al');return false}
+  const ok=await save('categories',null,{naam},true);if(ok&&!quiet)toast('Categorie toegevoegd');return !!ok;
+}
+async function renameCat(oud,nieuw){
+  nieuw=nieuw.trim();if(!nieuw||nieuw===oud)return;
+  if(allCats().some(c=>c!==oud&&norm(c)===norm(nieuw))){toast('Die categorie bestaat al');return}
+  const docs=S.catDocs.filter(c=>c.naam===oud);
+  if(docs.length){for(const d of docs)if(!await save('categories',d.id,{naam:nieuw},true))return}else if(!await save('categories',null,{naam:nieuw},true))return;
+  for(const r of S.recipes.filter(r=>r.categorie===oud))if(!await save('recipes',r.id,{...r,categorie:nieuw},true))return;
+  if(S.cat===oud)S.cat=nieuw;toast('Categorie hernoemd');render();
+}
+async function removeItem(k,id){const {error}=await S.sb.from('items').delete().eq('id',id);if(error){toast('Verwijderen mislukt: '+error.message);return false}S[k]=S[k].filter(x=>x.id!==id);return true}
+async function deleteCat(c){
+  for(const d of S.catDocs.filter(x=>x.naam===c))if(!await removeItem('catDocs',d.id))return;
+  for(const r of S.recipes.filter(r=>r.categorie===c))if(!await save('recipes',r.id,{...r,categorie:''},true))return;
+  if(S.cat===c)S.cat='';toast('Categorie verwijderd');render();
+}
+
 function recipeForm(r){
-  r=r||{titel:'',categorie:'',personen:'',moeilijkheid:'',tijd:'',ingredienten:[],stappen:[],nota:'',fotos:[]};
+  r=r||{titel:'',categorie:S.cat||'',personen:'',moeilijkheid:'',tijd:'',ingredienten:[],stappen:[],nota:'',fotos:[]};
   S.form={k:'recipes',id:r.id||null,fotos:[...(r.fotos||[])]};
-  const cats=[...new Set(['Groenten','Vlees','Vis','Pasta & Pizza','Soep','Dessert',...S.recipes.map(x=>x.categorie).filter(Boolean)])];
+  let cats=allCats();if(!cats.length)cats=[...DEFCATS];if(r.categorie&&!cats.includes(r.categorie))cats.push(r.categorie);
   sheet(`<div class="sh-h"><h2>${r.id?'Recept bewerken':'Nieuw recept'}</h2><button class="btn ghost" data-act="close" aria-label="Sluiten">✕</button></div>
   <div class="sh-b"><form class="f" id="rf">
    <label>Titel<input id="r_titel" required value="${esc(r.titel)}"></label>
-   <div class="two"><label>Categorie<input id="r_cat" list="cats" value="${esc(r.categorie)}"><datalist id="cats">${cats.map(c=>`<option value="${esc(c)}">`).join('')}</datalist></label>
+   <div class="two"><label>Categorie<select id="r_cat">${['',...cats].map(c=>`<option value="${esc(c)}" ${c===(r.categorie||'')?'selected':''}>${c?esc(c):'— geen —'}</option>`).join('')}<option value="__new">+ Nieuwe categorie…</option></select></label>
+   <label id="r_catnew_l" hidden>Naam nieuwe categorie<input id="r_catnew" placeholder="bv. Ovenschotels"></label>
    <label>Personen<input id="r_pers" inputmode="numeric" value="${esc(r.personen)}"></label>
    <label>Moeilijkheid<select id="r_moe">${['','Beginner','Gevorderd','Expert'].map(o=>`<option ${o===r.moeilijkheid?'selected':''}>${o}</option>`).join('')}</select></label>
    <label>Bereidingstijd<input id="r_tijd" value="${esc(r.tijd)}" placeholder="&lt; 60 minuten"></label></div>
@@ -427,15 +501,16 @@ const lines=v=>v.split('\n').map(s=>s.replace(/^\s*[-•*]\s*/,'').trim()).filte
 
 /* ---------- data writes ---------- */
 function rowToItem(r){return {...(r.data||{}),id:r.id,bijgewerkt:r.updated}}
-function applyRow(r){const k=r.kind==='recipes'?'recipes':'seeds';const it=rowToItem(r);const i=S[k].findIndex(x=>x.id===r.id);if(i>=0)S[k][i]=it;else S[k].push(it)}
-async function save(k,id,data){
+const KMAP={recipes:'recipes',seeds:'seeds',categories:'catDocs'};
+function applyRow(r){const k=KMAP[r.kind];if(!k)return;const it=rowToItem(r);const i=S[k].findIndex(x=>x.id===r.id);if(i>=0)S[k][i]=it;else S[k].push(it)}
+async function save(k,id,data,quiet){
   if(!S.sb||!S.user){toast('Je bent niet aangemeld.');return false}
   const clean={...data};delete clean.id;delete clean.bijgewerkt;
   const row={kind:k,data:clean,updated:new Date().toISOString(),updated_by:S.user.id};
   const q=id?S.sb.from('items').update(row).eq('id',id).select().single():S.sb.from('items').insert(row).select().single();
   const {data:r,error}=await q;
   if(error){toast('Opslaan mislukt: '+error.message);return false}
-  applyRow(r);toast('Opgeslagen');if(!S.form)render();return r.id;
+  applyRow(r);if(!quiet){toast('Opgeslagen');if(!S.form)render()}return r.id;
 }
 async function resize(file){
   const img=await new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=URL.createObjectURL(file)});
@@ -464,7 +539,7 @@ function buildIcs(){
   out.push('END:VCALENDAR');return {text:out.join('\r\n'),n};
 }
 function offer(filename,data,label){
-  const url=URL.createObjectURL(new Blob([data],{type:filename.endsWith('.ics')?'text/calendar':'application/json'}));
+  const url=URL.createObjectURL(new Blob([data],{type:filename.endsWith('.ics')?'text/calendar':filename.endsWith('.txt')?'text/plain;charset=utf-8':'application/json'}));
   const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),4000);toast(label);
 }
@@ -482,7 +557,7 @@ function render(){
   const fq=document.activeElement?.id;const pos=document.activeElement?.selectionStart;
   $('#app').innerHTML=html;
   if(fq==='q'||fq==='sq'){const el=$('#'+fq);if(el){el.focus();try{el.setSelectionRange(pos,pos)}catch(e){}}}
-  if(S.open&&!S.form){S.open.t==='r'?showRecipe(S.open.id):showSeed(S.open.id)}
+  const o=S.open;if(o&&!S.form){if(o.t==='r')showRecipe(o.id);else if(o.t==='s')showSeed(o.id);else if(o.t==='c')catSheet();else if(o.t==='sh')shareSheet(o.id)}
 }
 function route(){const h=location.hash.slice(1);S.view=['recepten','moestuin','kalender'].includes(h)?h:'vandaag';closeSheet();render();window.scrollTo(0,0)}
 addEventListener('hashchange',route);
@@ -500,6 +575,17 @@ document.addEventListener('click',async e=>{
   if(a==='newSeed')return seedForm();
   if(a==='editSeed')return seedForm(S.seeds.find(s=>s.id===id));
   if(a==='cat'){S.cat=el.dataset.v;return render()}
+  if(a==='cats'){catSheet();setTimeout(()=>$('#cat_new')?.focus(),50);return}
+  if(a==='catDefaults'){el.disabled=true;for(const c of DEFCATS)await addCat(c,true);toast('Standaardcategorieën toegevoegd');render();return}
+  if(a==='catRen'){const inp=el.parentElement.querySelector('input');return renameCat(el.dataset.v,inp.value)}
+  if(a==='catDel'){const n=catCount(el.dataset.v);if(n&&el.dataset.confirm!=='1'){el.dataset.confirm='1';el.textContent=`${n} recept${n>1?'en':''} – zeker?`;setTimeout(()=>{if(el.isConnected){el.dataset.confirm='';el.textContent='Verwijderen'}},4000);return}return deleteCat(el.dataset.v)}
+  if(a==='share')return shareSheet(id);
+  if(a==='shNative'){const r=S.recipes.find(x=>x.id===id);const data={title:r.titel,text:shareText(r)};if(S.shareFile)data.files=[S.shareFile];
+    try{await navigator.share(data)}catch(err){if(err?.name==='AbortError')return;if(data.files){try{delete data.files;await navigator.share(data);return}catch(e2){if(e2?.name==='AbortError')return}}toast('Delen lukt hier niet; gebruik WhatsApp, e-mail of kopiëren.')}return}
+  if(a==='shCopy'){const t=$('#shtxt');const done=()=>toast('Recept gekopieerd – plak het in je bericht');try{await navigator.clipboard.writeText(t.value);done()}catch(err){t.focus();t.select();try{document.execCommand('copy')?done():toast('Tekst is geselecteerd – kopieer hem zelf')}catch(e2){toast('Tekst is geselecteerd – kopieer hem zelf')}}return}
+  if(a==='shTxt'){const r=S.recipes.find(x=>x.id===id);return offer(fileName(r.titel)+'.txt',shareText(r),'Recept opgeslagen')}
+  if(a==='delEx'){if(el.dataset.confirm!=='1'){el.dataset.confirm='1';el.textContent='Zeker? Klik opnieuw';setTimeout(()=>{if(el.isConnected){el.dataset.confirm='';el.textContent='Voorbeelden verwijderen'}},4000);return}
+    el.disabled=true;for(const s of S.seeds.filter(s=>s.voorbeeld))if(!await removeItem('seeds',s.id))break;toast('Voorbeelden verwijderd – je moestuin is leeg');render();return}
   if(a==='qadd'){const v=el.dataset.v;let qs=S.q.split(',').map(s=>s.trim()).filter(Boolean);qs=qs.some(q=>norm(q)===norm(v))?qs.filter(q=>norm(q)!==norm(v)):[...qs,v];S.q=qs.join(', ');return render()}
   if(a==='rmfoto'){S.form.fotos.splice(+el.dataset.i,1);return drawThumbs()}
   if(a==='stock'){const s=S.seeds.find(x=>x.id===id);const v=Math.max(0,Number(s.aantal||0)+Number(el.dataset.d));const {id:_,...rest}=s;await save('seeds',id,{...rest,aantal:v});return}
@@ -508,19 +594,24 @@ document.addEventListener('click',async e=>{
     const k=el.dataset.k;S[k]=S[k].filter(x=>x.id!==id);toast('Verwijderd');closeSheet();render();return}
   if(await authClick(a,el))return;
   if(a==='ics'){const {text,n}=buildIcs();if(!n){toast('Zet bij minstens één zaadzakje de herinnering aan.');return}return offer('zaaikalender.ics',text,`${n} herinneringen klaar voor je agenda`)}
-  if(a==='export'){return offer('tuin-en-tafel-backup.json',JSON.stringify({recepten:S.recipes,zaden:S.seeds},null,2),'Back-up opgeslagen')}
+  if(a==='export'){return offer('tuin-en-tafel-backup.json',JSON.stringify({recepten:S.recipes,zaden:S.seeds,categorieen:S.catDocs.map(c=>c.naam)},null,2),'Back-up opgeslagen')}
 });
 document.addEventListener('change',async e=>{
   if(e.target.id==='imp_file')return importFile(e.target);
+  if(e.target.id==='r_cat'){const nw=e.target.value==='__new';$('#r_catnew_l').hidden=!nw;if(nw)$('#r_catnew').focus();return}
   if(e.target.id!=='r_foto')return;const files=[...e.target.files];if(!files.length)return;
   const btn=$('#r_save');btn.disabled=true;btn.textContent='Foto uploaden…';
   for(const f of files){try{const b=await resize(f);const r=await uploadPhoto(b);S.form.fotos.push(r);drawThumbs()}catch(err){toast('Foto uploaden mislukt: '+(err?.message||err?.code||''))}}
   btn.disabled=false;btn.textContent='Opslaan';e.target.value='';
 });
 document.addEventListener('submit',async e=>{
-  e.preventDefault();if(await authSubmit(e.target))return;const f=S.form;if(!f)return;
+  e.preventDefault();if(await authSubmit(e.target))return;
+  if(e.target.id==='catf'){if(await addCat($('#cat_new').value))render();return}
+  const f=S.form;if(!f)return;
   if(e.target.id==='rf'){
-    const d={titel:$('#r_titel').value.trim(),categorie:$('#r_cat').value.trim(),personen:$('#r_pers').value.trim(),moeilijkheid:$('#r_moe').value,tijd:$('#r_tijd').value.trim(),
+    let cat=$('#r_cat').value;if(cat==='__new'){cat=$('#r_catnew').value.trim();const ex=allCats().find(c=>norm(c)===norm(cat));if(ex)cat=ex;else if(cat)await addCat(cat,true)}
+    else if(cat&&!allCats().includes(cat))await addCat(cat,true);
+    const d={titel:$('#r_titel').value.trim(),categorie:cat,personen:$('#r_pers').value.trim(),moeilijkheid:$('#r_moe').value,tijd:$('#r_tijd').value.trim(),
       ingredienten:lines($('#r_ing').value),stappen:lines($('#r_stap').value),nota:$('#r_nota').value.trim(),fotos:f.fotos};
     if(!d.titel)return;const ok=await save('recipes',f.id,d);if(ok){S.form=null;closeSheet();render();showRecipe(ok)}
   }
@@ -553,6 +644,7 @@ async function importData(obj,photoBase){
     }
     d.fotos=f;rows.push({kind:'recipes',data:d,updated:now,updated_by:S.user.id});
   }
+  for(const c of (obj.categorieen||[])){if(c&&!allCats().some(x=>norm(x)===norm(c)))rows.push({kind:'categories',data:{naam:c},updated:now,updated_by:S.user.id})}
   for(const s of (obj.zaden||obj.seeds||[])){if(!s||!s.groente)continue;const d={...s};delete d.id;delete d.bijgewerkt;rows.push({kind:'seeds',data:d,updated:now,updated_by:S.user.id})}
   await insertMany(rows);await loadData();return rows.length;
 }
@@ -624,13 +716,13 @@ async function authSubmit(form){
 async function loadData(){
   const {data,error}=await S.sb.from('items').select('id,kind,data,updated').order('updated',{ascending:false}).limit(10000);
   if(error){S.failed=true;$('#sync').textContent='fout bij laden';toast('Laden mislukt: '+error.message);render();return}
-  S.recipes=data.filter(r=>r.kind==='recipes').map(rowToItem);S.seeds=data.filter(r=>r.kind==='seeds').map(rowToItem);
+  S.recipes=data.filter(r=>r.kind==='recipes').map(rowToItem);S.seeds=data.filter(r=>r.kind==='seeds').map(rowToItem);S.catDocs=data.filter(r=>r.kind==='categories').map(rowToItem);
   S.got={r:true,s:true};S.failed=false;$('#sync').textContent='';if(!S.form)render();
 }
 function subscribe(){
   if(S.channel)return;
   S.channel=S.sb.channel('items').on('postgres_changes',{event:'*',schema:'public',table:'items'},p=>{
-    if(p.eventType==='DELETE'){const id=p.old?.id;S.recipes=S.recipes.filter(x=>x.id!==id);S.seeds=S.seeds.filter(x=>x.id!==id)}
+    if(p.eventType==='DELETE'){const id=p.old?.id;S.recipes=S.recipes.filter(x=>x.id!==id);S.seeds=S.seeds.filter(x=>x.id!==id);S.catDocs=S.catDocs.filter(x=>x.id!==id)}
     else applyRow(p.new);
     if(!S.form)render();
   }).subscribe(st=>{if(st==='SUBSCRIBED')$('#sync').textContent=''});
@@ -640,7 +732,7 @@ function startApp(user){
   route();loadData();subscribe();
 }
 function stopApp(){
-  S.user=null;S.recipes=[];S.seeds=[];S.got={r:false,s:false};
+  S.user=null;S.recipes=[];S.seeds=[];S.catDocs=[];S.got={r:false,s:false};
   if(S.channel){S.sb.removeChannel(S.channel);S.channel=null}
   closeSheet();authView('login');
 }
