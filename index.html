@@ -502,8 +502,8 @@ function recipeForm(r){
    <label>Ingrediënten <span class="muted" style="font-weight:400">één per lijn</span><textarea id="r_ing">${esc((r.ingredienten||[]).join('\n'))}</textarea></label>
    <label>Bereiding <span class="muted" style="font-weight:400">één stap per lijn</span><textarea id="r_stap" style="min-height:160px">${esc((r.stappen||[]).join('\n'))}</textarea></label>
    <label>Nota<textarea id="r_nota" style="min-height:70px">${esc(r.nota)}</textarea></label>
-   <label>Video-link <span class="muted" style="font-weight:400">optioneel, bv. een YouTube-link of een link naar een .mp4</span><input id="r_video" type="url" inputmode="url" value="${esc(r.video||'')}" placeholder="https://…"></label>
-   <div class="row"><label class="btn" style="cursor:pointer">🎬 Video uploaden<input id="r_vidfile" type="file" accept="video/*" hidden></label><span class="muted" id="vidstat" style="font-size:13px">${r.video?'Er hangt al een video aan dit recept.':'Kies een filmpje van je gsm of computer (max. 50 MB).'}</span></div>
+   ${S.admin?`<label>Video-link <span class="muted" style="font-weight:400">optioneel, bv. een YouTube-link of een link naar een .mp4</span><input id="r_video" type="url" inputmode="url" value="${esc(r.video||'')}" placeholder="https://…"></label>
+   <div class="row"><label class="btn" style="cursor:pointer">🎬 Video uploaden<input id="r_vidfile" type="file" accept="video/*" hidden></label><span class="muted" id="vidstat" style="font-size:13px">${r.video?'Er hangt al een video aan dit recept.':'Kies een filmpje van je gsm of computer (max. 50 MB).'}</span></div>`:''}
    <div style="display:grid;gap:8px"><span class="label">Foto's</span><div class="thumbs" id="thumbs"></div>
    <label class="btn" style="justify-self:start;cursor:pointer">+ Foto toevoegen<input id="r_foto" type="file" accept="image/*" multiple hidden></label></div>
    <div class="row" style="justify-content:flex-end"><button type="button" class="btn" data-act="close">Annuleren</button><button class="btn primary" type="submit" id="r_save">Opslaan</button></div>
@@ -893,6 +893,7 @@ document.addEventListener('drop',async e=>{if(!S.user||!isDocx(e))return;e.preve
   if(location.hash!=='#recepten')location.hash='#recepten';await importWord(fs)});
 document.addEventListener('change',async e=>{
   if(e.target.id==='r_vidfile'){const f=e.target.files[0];e.target.value='';if(!f)return;
+    if(!S.admin){toast('Alleen de beheerder kan video\'s toevoegen.');return}
     if(!window.TT_LIVE){toast('Video uploaden kan alleen in de volledige versie met aanmelden.');return}
     if(f.size>50*1024*1024){toast('Dit filmpje is te groot (max. 50 MB). Kort het in of zet het op YouTube en plak de link.');return}
     const btn=$('#r_save'),st=$('#vidstat');btn.disabled=true;st.textContent='Video uploaden… even geduld';
@@ -917,7 +918,7 @@ document.addEventListener('submit',async e=>{
     let cat=$('#r_cat').value;if(cat==='__new'){cat=$('#r_catnew').value.trim();const ex=allCats().find(c=>norm(c)===norm(cat));if(ex)cat=ex;else if(cat)await addCat(cat,true)}
     else if(cat&&!allCats().includes(cat))await addCat(cat,true);
     const d={titel:$('#r_titel').value.trim(),categorie:cat,personen:$('#r_pers').value.trim(),moeilijkheid:$('#r_moe').value,tijd:$('#r_tijd').value.trim(),
-      ingredienten:lines($('#r_ing').value),stappen:lines($('#r_stap').value),nota:$('#r_nota').value.trim(),fotos:f.fotos,video:$('#r_video').value.trim(),videoPoster:($('#r_video').value.trim()===(f.video||''))?(f.videoPoster||''):''};
+      ingredienten:lines($('#r_ing').value),stappen:lines($('#r_stap').value),nota:$('#r_nota').value.trim(),fotos:f.fotos,video:$('#r_video')?$('#r_video').value.trim():(f.video||''),videoPoster:(!$('#r_video')||$('#r_video').value.trim()===(f.video||''))?(f.videoPoster||''):''};
     if(!d.titel)return;const ok=await save('recipes',f.id,d);if(ok){const q=S.impQ;S.form=null;closeSheet();render();if(q&&q.length){S.impQ=q;nextImport()}else showRecipe(ok)}
   }
   if(e.target.id==='sf'){
@@ -1033,7 +1034,8 @@ function subscribe(){
   }).subscribe(st=>{if(st==='SUBSCRIBED')$('#sync').textContent=''});
 }
 function startApp(user){
-  S.user=user;$('#gear').hidden=false;$('#tabs').hidden=false;
+  S.user=user;S.admin=!window.TT_LIVE;
+  if(window.TT_LIVE)S.sb.rpc('is_beheerder').then(({data})=>{S.admin=data===true}).catch(()=>{});$('#gear').hidden=false;$('#tabs').hidden=false;
   route();loadData();subscribe();
 }
 function stopApp(){

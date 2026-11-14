@@ -45,3 +45,7 @@ Toevoegen of verwijderen: Supabase → *Authentication* → *Users*. Iedereen me
 - `setup.sql` – databank, rechten, fotobucket
 - `demo-backend.js`, `demo-overrides.js` – alleen gebruikt zolang config.js leeg is
 - `starter/` – voorbeeldrecepten, foto's en video
+
+## Video's: alleen beheerder
+
+Alleen beheerders zien het veld *Video-link* en de knop *Video uploaden*. De databank dwingt dit ook af (andere gebruikers kunnen een video niet wijzigen of wissen). Instellen: voer `video-beheer.sql` uit in de SQL Editor, met het e-mailadres van de beheerder in plaats van `JOUW-EMAIL`. Extra beheerder later: voer alleen het `insert into public.beheerders …`-blok opnieuw uit met dat e-mailadres.
