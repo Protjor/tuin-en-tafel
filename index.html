@@ -215,6 +215,14 @@ details.how p{margin:8px 0 0;color:var(--ink-2)}
 .catrow input{flex:1 1 160px;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-width:0}
 .chip .c{font-family:var(--f-mono);font-size:11px;opacity:.6}
 .chip.add{border-style:dashed;color:var(--ink-2)}
+.addopts{display:grid;gap:10px}
+.addopt{display:flex;gap:14px;align-items:flex-start;text-align:left;width:100%;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--paper);cursor:pointer;color:var(--ink);font:inherit}
+.addopt:hover{border-color:var(--leaf);background:var(--leaf-soft)}
+.addopt .ic{font-size:26px;line-height:1}
+.addopt b{display:block;font-size:16px}
+.addopt small{display:block;color:var(--ink-2);font-size:13px;margin-top:2px}
+.vegbox{display:grid;gap:10px;background:var(--leaf-soft);border-radius:12px;padding:12px 14px}
+body.drag #app{outline:3px dashed var(--leaf);outline-offset:6px;border-radius:12px}
 .vidlink{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:1px solid var(--line);background:var(--beet-soft);border-radius:12px;padding:10px 14px;cursor:pointer;font-weight:600;color:var(--ink)}
 .vidlink .play{flex:none;width:36px;height:36px;border-radius:50%;background:var(--beet);color:#fff;display:grid;place-items:center;font-size:14px}
 .vidwrap{display:flex;justify-content:center;background:#000;border-radius:12px;overflow:hidden}
@@ -269,11 +277,13 @@ const $=s=>document.querySelector(s);
 function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),2600)}
 
 /* ---------- domain helpers ---------- */
-const terms=seed=>[seed.groente,...String(seed.zoektermen||'').split(',')].map(norm).map(s=>s.trim()).filter(s=>s.length>2);
+const terms=seed=>[seed.groente,...String(seed.zoektermen||'').split(',')].map(norm).map(s=>s.trim()).filter(s=>s.length>1);
+/* korte woorden (ui, look) enkel als los woord, langere ook binnen een woord (rodekool → "rodekoolsalade") */
+const hasTerm=(x,w)=>w.length<4?new RegExp('(^|[^a-z])'+w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'($|[^a-z])').test(x):x.includes(w);
 function recipeText(r){return norm([r.titel,...(r.ingredienten||[])].join(' \n '))}
-function recipesForSeed(seed){const t=terms(seed);return S.recipes.filter(r=>{const x=recipeText(r);return t.some(w=>x.includes(w))})}
-function seedsForLine(line){const x=norm(line);return S.seeds.filter(s=>terms(s).some(w=>x.includes(w)))}
-function seedsForRecipe(r){const x=recipeText(r);return S.seeds.filter(s=>terms(s).some(w=>x.includes(w)))}
+function recipesForSeed(seed){const t=terms(seed);return S.recipes.filter(r=>{const x=recipeText(r);return t.some(w=>hasTerm(x,w))})}
+function seedsForLine(line){const x=norm(line);return S.seeds.filter(s=>terms(s).some(w=>hasTerm(x,w)))}
+function seedsForRecipe(r){const x=recipeText(r);return S.seeds.filter(s=>terms(s).some(w=>hasTerm(x,w)))}
 const isLow=s=>Number(s.aantal||0)<=Number(s.minimum||0);
 const sowMonths=s=>[...new Set([...(s.binnen||[]),...(s.buiten||[])])];
 const sowsIn=(s,m)=>sowMonths(s).includes(m);
@@ -323,12 +333,12 @@ function vRecipes(){
   const list=filteredRecipes();
   const qs=S.q.split(',').map(s=>s.trim()).filter(Boolean);
   const garden=S.seeds.filter(s=>recipesForSeed(s).length);
-  return `<div class="sec-head"><h2>Recepten</h2><div class="row"><label class="btn" style="cursor:pointer" title="Recept inlezen uit een Word-bestand (.docx)">Uit Word…<input id="docx_in" type="file" accept=".docx,.doc,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple hidden></label><button class="btn primary" data-act="newRecipe">+ Nieuw recept</button></div></div>
+  return `<div class="sec-head"><h2>Recepten</h2><button class="btn primary" data-act="addMenu">+ Recept toevoegen</button></div>
   <div class="row"><label class="search"><span aria-hidden="true" class="muted">⌕</span><input id="q" type="search" placeholder="Zoek op ingrediënten, bv. witloof, ham" value="${esc(S.q)}" aria-label="Zoek op ingrediënten"></label></div>
   <div class="row"><span class="label">Categorie</span><button class="chip ${!S.cat?'on':''}" data-act="cat" data-v="">Alles <span class="c">${S.recipes.length}</span></button>${cats.map(c=>`<button class="chip ${S.cat===c?'on':''}" data-act="cat" data-v="${esc(c)}">${esc(c)} <span class="c">${catCount(c)}</span></button>`).join('')}<button class="chip add" data-act="cats">+ Categorie / beheren</button></div>
   <div class="row"><span class="label">Uit je tuin</span>${garden.length?garden.map(s=>`<button class="chip ${qs.map(norm).includes(norm(s.groente))?'on':''}" data-act="qadd" data-v="${esc(s.groente)}"><span class="dot"></span>${esc(s.groente)}</button>`).join(''):`<span class="muted" style="font-size:13px">nog geen groenten uit je moestuin in deze recepten</span>`}</div>
   <details class="how"><summary>Hoe werkt “Uit je tuin”?</summary><p>Je hoeft niets zelf te linken. Elk zaadzakje dat je bij <b>Moestuin</b> invult, wordt automatisch gekoppeld aan elk recept waarin die groente in de titel of bij de ingrediënten staat. Per groente verschijnt hierboven een knop: tik erop en je ziet alle recepten met die groente (tik op meerdere voor recepten met alles samen). In het recept zelf staat naast het ingrediënt “uit tuin” met je voorraad.</p><p>Heet de groente in je recepten anders, bv. “witlof” in plaats van “witloof” of “tuinkruiden”, vul die woorden dan in bij <b>Extra zoektermen</b> van het zaadzakje.</p></details>
-  ${list.length?`<div class="grid">${list.map(rCard).join('')}</div>`:`<div class="empty">${!S.recipes.length?'Nog geen recepten. Klik op <b>+ Nieuw recept</b> om je eerste toe te voegen.':S.cat&&!S.q.trim()?`Nog geen recepten in “${esc(S.cat)}”. Kies deze categorie bij <b>Bewerken</b> van een recept, of maak een nieuw recept.`:'Geen recept met al deze ingrediënten. Haal een zoekterm weg of probeer een ander ingrediënt.'}</div>`}`;
+  ${list.length?`<div class="grid">${list.map(rCard).join('')}</div>`:`<div class="empty">${!S.recipes.length?'Nog geen recepten. Klik op <b>+ Recept toevoegen</b>: je kan een Word-bestand kiezen, tekst plakken of zelf typen.':S.cat&&!S.q.trim()?`Nog geen recepten in “${esc(S.cat)}”. Kies deze categorie bij <b>Bewerken</b> van een recept, of maak een nieuw recept.`:'Geen recept met al deze ingrediënten. Haal een zoekterm weg of probeer een ander ingrediënt.'}</div>`}`;
 }
 function rCard(r){
   const ph=(r.fotos||[])[0];
@@ -385,6 +395,7 @@ function showRecipe(id){
    <div class="cols"><div><span class="label">Ingrediënten</span><ul class="ing">${(r.ingredienten||[]).map(l=>{const ss=seedsForLine(l);return `<li>${esc(l)}${ss.map(s=>`<button class="g" data-act="seed" data-id="${s.id}">uit tuin · ${esc(s.aantal??0)} ${esc(s.eenheid||'zaden')}</button>`).join('')}</li>`}).join('')}</ul></div>
    <div><span class="label">Bereiding</span><ol class="steps">${(r.stappen||[]).map(l=>`<li>${esc(l)}</li>`).join('')}</ol></div></div>
    ${r.nota?`<div class="note"><span class="label">Nota</span><div>${esc(r.nota).replace(/\n/g,'<br>')}</div></div>`:''}
+   ${vegBox(r)}
    ${g.length?`<div class="row"><span class="label">Groenten uit je tuin</span>${g.map(s=>`<button class="chip beet" data-act="seed" data-id="${s.id}">${esc(seedName(s))}</button>`).join('')}</div>`:''}
    <div class="row" style="justify-content:space-between"><button class="btn danger" data-act="del" data-k="recipes" data-id="${r.id}">Verwijderen</button><div class="row"><button class="btn" data-act="share" data-id="${r.id}">↗ Delen</button><button class="btn primary" data-act="editRecipe" data-id="${r.id}">Bewerken</button></div></div>
   </div>`);
@@ -583,61 +594,114 @@ async function unzip(buf){
     if(f.comp===0)return data;
     return new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer())};
 }
+/* Leest een .docx (ook "Strict"-formaat en tekstvakken) als lijst van alinea's {t,st,list} + tabellen + foto's */
 async function readDocx(file){
-  if(/\.doc$/i.test(file.name))throw new Error('oud Word-formaat (.doc). Open het in Word en kies Opslaan als → .docx');
+  if(/\.doc$/i.test(file.name))throw new Error('dit is het oude Word-formaat (.doc). Open het in Word, kies Bestand → Opslaan als → Word-document (.docx) en probeer opnieuw');
+  if(!/\.docx$/i.test(file.name))throw new Error('dit is geen Word-bestand. Kies een bestand dat eindigt op .docx');
   const get=await unzip(await file.arrayBuffer());
   const xml=await get('word/document.xml');if(!xml)throw new Error('dit is geen Word-bestand (.docx)');
   const P=b=>new DOMParser().parseFromString(new TextDecoder().decode(b),'application/xml');
-  const W='http://schemas.openxmlformats.org/wordprocessingml/2006/main',A='http://schemas.openxmlformats.org/drawingml/2006/main',R='http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+  const doc=P(xml);
+  // Word bewaart tekstvakken dubbel (nieuw + oud formaat): de oude kopie weggooien
+  for(const fb of [...doc.getElementsByTagName('*')].filter(x=>x.localName==='Fallback'))fb.remove();
   const rels={};const rb=await get('word/_rels/document.xml.rels');
-  if(rb)for(const r of P(rb).getElementsByTagName('Relationship'))rels[r.getAttribute('Id')]=r.getAttribute('Target');
-  const paras=[],imgIds=[];
-  for(const p of P(xml).getElementsByTagNameNS(W,'p')){
-    let t='';for(const x of p.getElementsByTagNameNS(W,'*')){if(x.localName==='t')t+=x.textContent;else if(x.localName==='tab')t+=' ';else if(x.localName==='br'||x.localName==='cr')t+='\n'}
-    const st=(p.getElementsByTagNameNS(W,'pStyle')[0]?.getAttributeNS(W,'val')||'').toLowerCase();
-    const list=p.getElementsByTagNameNS(W,'numPr').length>0||/list/.test(st);
-    for(const b of p.getElementsByTagNameNS(A,'blip')){const id=b.getAttributeNS(R,'embed');if(id&&rels[id]&&!imgIds.includes(id))imgIds.push(id)}
-    for(const l of t.split('\n'))if(l.trim())paras.push({t:l.trim(),st,list});
+  if(rb)for(const r of P(rb).getElementsByTagName('*'))if(r.localName==='Relationship')rels[r.getAttribute('Id')]=r.getAttribute('Target');
+  const all=[...doc.getElementsByTagName('*')];
+  const isP=x=>x.localName==='p'&&/wordprocessingml/.test(x.namespaceURI||'');
+  const ownP=x=>{let a=x.parentNode;while(a&&!isP(a))a=a.parentNode;return a};
+  const attr=(x,name)=>{for(const a of x.attributes)if(a.localName===name)return a.value;return ''};
+  const text=p=>{let t='';for(const x of p.getElementsByTagName('*')){if(ownP(x)!==p)continue;
+    if(x.localName==='t')t+=x.textContent;else if(x.localName==='tab')t+=' ';else if(x.localName==='br'||x.localName==='cr')t+='\n'}return t};
+  const inTable=p=>{let a=p.parentNode;while(a){if(a.localName==='tc')return true;a=a.parentNode}return false};
+  const paras=[],imgIds=[],tables=[];
+  for(const p of all.filter(isP)){
+    if(inTable(p))continue;
+    const ps=[...p.getElementsByTagName('*')].find(x=>x.localName==='pStyle'&&ownP(x)===p);
+    const st=(ps?attr(ps,'val'):'').toLowerCase();
+    const list=[...p.getElementsByTagName('*')].some(x=>x.localName==='numPr'&&ownP(x)===p)||/list|ingredient/.test(st);
+    for(const l of text(p).split('\n'))if(l.trim())paras.push({t:l.trim(),st,list});
   }
+  for(const tb of all.filter(x=>x.localName==='tbl')){
+    const rows=[...tb.children].filter(x=>x.localName==='tr').map(tr=>[...tr.children].filter(x=>x.localName==='tc').map(tc=>[...tc.getElementsByTagName('*')].filter(isP).map(text).join(' ').trim()));
+    tables.push(rows);
+  }
+  for(const b of all.filter(x=>x.localName==='blip')){const id=attr(b,'embed');if(id&&rels[id]&&!imgIds.includes(id))imgIds.push(id)}
   const images=[];
   for(const id of imgIds){const tg=rels[id].replace(/^\//,'');const path=tg.startsWith('word/')?tg:'word/'+tg;
     const ext=(path.split('.').pop()||'').toLowerCase();const type={jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',gif:'image/gif',webp:'image/webp'}[ext];
     if(!type)continue;const d=await get(path);if(d)images.push(new Blob([d],{type}))}
-  return {paras,images};
+  return {paras,tables,images};
 }
-function parseRecipe(paras,fname){
+/* Titels in HOOFDLETTERS netjes maken: "wITLOOF IN DE OVEN “NEW STYLE”" → "Witloof in de oven “New Style”" */
+function niceCase(t){
+  t=String(t||'').trim();const letters=t.replace(/[^A-Za-zÀ-ÿ]/g,'');
+  if(!letters||letters.replace(/[^a-zà-ÿ]/g,'').length>letters.length*0.4)return t;
+  t=t.toLowerCase();t=t.charAt(0).toUpperCase()+t.slice(1);
+  return t.replace(/([“"‘'])([^”"’']+)([”"’'])/g,(m,a,b,c)=>a+b.replace(/(^|\s)(\S)/g,(x,s,ch)=>s+ch.toUpperCase())+c);
+}
+/* Categorie: "PASTA & PIZZA" → "Pasta & Pizza" */
+const catCase=t=>String(t||'').trim().toLowerCase().replace(/(^|\s)(\S)/g,(m,a,b)=>a+(/^(en|met|de|van|of)$/.test(b)?b:b.toUpperCase())).replace(/(^|\s)(en|met|de|van|of)(?=\s)/g,(m)=>m);
+function parseRecipe(paras,fname,tables){
   const r={titel:'',categorie:'',personen:'',moeilijkheid:'',tijd:'',ingredienten:[],stappen:[],nota:''};
   let sec='kop';const loose=[],nota=[];
   const head=(t,re)=>t.length<45&&re.test(norm(t));
   const after=t=>t.includes(':')?t.slice(t.indexOf(':')+1).trim():'';
   const lvl={beginner:'Beginner',makkelijk:'Beginner',eenvoudig:'Beginner',gemiddeld:'Gevorderd',gevorderd:'Gevorderd',moeilijk:'Expert',expert:'Expert'};
+  const setLvl=v=>{const k=norm(v).trim().split(/\s+/)[0];r.moeilijkheid=lvl[k]||niceCase(v.trim())};
+  const dash=/^[-•*·▪–]\s*/;
+  // tabel met "Personen: / Moeilijkheidsgraad: / Bereidingstijd:" en de waarden eronder of ernaast
+  for(const rows of (tables||[]))for(let i=0;i<rows.length;i++)for(let j=0;j<rows[i].length;j++){
+    const k=norm(rows[i][j]).replace(/:$/,'').trim();
+    const v=((rows[i+1]||[])[j]||rows[i][j+1]||'').trim();if(!v||/:$/.test(v))continue;
+    if(/^(personen|aantal personen|porties)$/.test(k)&&!r.personen)r.personen=(v.match(/\d+/)||[v])[0];
+    else if(/^(moeilijkheid|moeilijkheidsgraad|niveau)$/.test(k)&&!r.moeilijkheid)setLvl(v);
+    else if(/^(bereidingstijd|tijd|kooktijd)$/.test(k)&&!r.tijd)r.tijd=v;
+  }
   for(const p of paras){
     const t=p.t,n=norm(t);
+    if(/recipetitle|^title$|titel/.test(p.st)&&!r.titel){r.titel=niceCase(t);continue}
+    if(/recipetitle/.test(p.st))continue;
+    if(/recipesection|categor/.test(p.st)){if(!r.categorie)r.categorie=catCase(t);continue}
     if(head(t,/^(ingredi|benodigdheden|nodig\b|wat heb je nodig)/)){sec='ing';const a=after(t);if(a)r.ingredienten.push(a);continue}
-    if(head(t,/^(bereiding(?!stijd)|werkwijze|instructies|stappen|aanpak|zo maak|recept\s*:?$)/)){sec='stap';const a=after(t);if(a)r.stappen.push(a);continue}
+    if(head(t,/^(bereiding(?!stijd)|werkwijze|instructies|stappen|aanpak|zo maak|recept\s*:?$)/)){sec='stap';const a=after(t);if(a)r.stappen.push(a.replace(dash,''));continue}
     if(head(t,/^(tip|tips|nota|opmerking|serveertip|variatie|weetje)/)){sec='nota';const a=after(t);if(a)nota.push(a);continue}
     if(sec!=='stap'&&t.length<70){
       const m=n.match(/(\d+)\s*(personen|persoon|pers\b|porties)/);if(m&&!r.personen&&!(sec==='ing'&&!/^(voor|aantal|personen)/.test(n))){r.personen=m[1];continue}
       const lv=n.match(/^(?:moeilijkheid(?:sgraad)?|niveau)?\s*:?\s*(beginner|makkelijk|eenvoudig|gemiddeld|gevorderd|moeilijk|expert)\s*$/);if(lv&&!r.moeilijkheid){r.moeilijkheid=lvl[lv[1]];continue}
       if(!r.tijd&&sec!=='ing'&&/\b(min|minuten|uur|kwartier)\b/.test(n)&&(/tijd/.test(n)||/^[<±~\d]/.test(n))){r.tijd=t.replace(/^(bereidings|kook|oven)?tijd\s*:?\s*/i,'');continue}
-      if(/^categorie\s*:/.test(n)){r.categorie=after(t);continue}
+      if(/^categorie\s*:/.test(n)){r.categorie=catCase(after(t));continue}
     }
-    if(!r.titel&&sec==='kop'){r.titel=t;continue}
-    if(sec==='ing')r.ingredienten.push(t.replace(/^[-•*·▪–]\s*/,''));
-    else if(sec==='stap')r.stappen.push(t.replace(/^(\d+\s*[.)]|stap\s*\d+\s*:?)\s*/i,''));
+    if(!r.titel&&sec==='kop'){r.titel=niceCase(t);continue}
+    if(sec==='ing')r.ingredienten.push(t.replace(dash,''));
+    else if(sec==='stap'){
+      // "- stap" begint een nieuwe stap; een regel zonder streepje hoort bij de vorige stap
+      const nieuw=dash.test(t)||/^(\d+\s*[.)]|stap\s*\d+)/i.test(t)||!r.stappen.length;
+      const clean=t.replace(dash,'').replace(/^(\d+\s*[.)]|stap\s*\d+\s*:?)\s*/i,'');
+      if(nieuw)r.stappen.push(clean);else r.stappen[r.stappen.length-1]+=' '+clean;
+    }
     else if(sec==='nota')nota.push(t);
     else loose.push(p);
   }
   if(!r.ingredienten.length&&!r.stappen.length){
-    for(const p of loose){if(p.list&&!r.stappen.length)r.ingredienten.push(p.t.replace(/^[-•*·▪–]\s*/,''));else r.stappen.push(p.t.replace(/^(\d+\s*[.)])\s*/,''))}
+    for(const p of loose){if((p.list||dash.test(p.t))&&!r.stappen.length)r.ingredienten.push(p.t.replace(dash,''));else r.stappen.push(p.t.replace(dash,'').replace(/^(\d+\s*[.)])\s*/,''))}
   }else nota.unshift(...loose.map(p=>p.t));
-  r.nota=nota.join('\n');if(!r.titel)r.titel=fname.replace(/\.docx?$/i,'');
+  // dubbele regels weg (sommige sjablonen herhalen tekst)
+  const uniq=a=>a.filter((x,i)=>a.indexOf(x)===i);
+  r.ingredienten=uniq(r.ingredienten);r.stappen=uniq(r.stappen);
+  r.nota=uniq(nota).join('\n');if(!r.titel)r.titel=niceCase(fname.replace(/\.docx?$/i,'').replace(/_/g,' '));
+  if(r.categorie){const ex=allCats().find(c=>norm(c)===norm(r.categorie));if(ex)r.categorie=ex}
   return r;
+}
+/* Geplakte tekst (uit mail, website, WhatsApp…) → recept */
+function parseText(txt){
+  const paras=String(txt||'').split(/\r?\n/).map(l=>l.trim()).filter(Boolean).map(t=>({t,st:'',list:/^([-•*·▪–]|\d+\s*[.)])\s*/.test(t)}));
+  return parseRecipe(paras,'Nieuw recept',[]);
 }
 async function importWord(files){
   const out=[];toast(files.length>1?`${files.length} Word-bestanden lezen…`:'Word-bestand lezen…');
   for(const f of files){
-    try{const {paras,images}=await readDocx(f);const r=parseRecipe(paras,f.name);r.fotos=[];
+    try{const {paras,tables,images}=await readDocx(f);const r=parseRecipe(paras,f.name,tables);r.fotos=[];
+      if(!r.ingredienten.length&&!r.stappen.length)throw new Error('geen recept gevonden in dit bestand');
       for(const b of images.slice(0,4)){try{const ph=await storePhoto(b);if(ph)r.fotos.push(ph)}catch(e){}}
       out.push({r,name:f.name})}
     catch(e){toast(`${f.name}: ${e.message||'kon niet gelezen worden'}`)}
@@ -647,7 +711,117 @@ async function importWord(files){
 function nextImport(){
   const x=S.impQ.shift();if(!x){S.impQ=null;return}const i=S.impN-S.impQ.length;
   recipeForm(x.r);
-  $('#rf').insertAdjacentHTML('afterbegin',`<div class="note">Ingelezen uit <b>${esc(x.name)}</b>${S.impN>1?` (${i} van ${S.impN})`:''}. Kijk even na of titel, ingrediënten en stappen goed staan, kies eventueel een categorie en klik op <b>Opslaan</b>.</div>`);
+  const dup=S.recipes.find(r=>norm(r.titel)===norm(x.r.titel));
+  $('#rf').insertAdjacentHTML('afterbegin',`<div class="note">${x.name?`Ingelezen uit <b>${esc(x.name)}</b>${S.impN>1?` (${i} van ${S.impN})`:''}. `:''}Kijk even na of alles goed staat en klik onderaan op <b>Opslaan</b>.${dup?`<br><b>Let op:</b> er bestaat al een recept “${esc(dup.titel)}”. Sla dit enkel op als het een ander recept is.`:''}</div>`);
+}
+/* ---------- groenten in recepten herkennen → voorstel voor de moestuin ----------
+   Standaard zaaitijden (Belgisch klimaat, ruwweg). b = binnen voorzaaien, z = buiten zaaien/planten, o = oogst. Maanden 1-12. */
+const VEG=[
+ {n:'Witloof',w:['witloof','witlof','witlofwortel'],b:[],z:[5,6],o:[11,12,1,2,3]},
+ {n:'Rodekool',w:['rodekool','rode kool'],b:[3,4],z:[4,5],o:[9,10,11]},
+ {n:'Witte kool',w:['witte kool','wittekool'],b:[3,4],z:[4,5],o:[8,9,10,11]},
+ {n:'Savooiekool',w:['savooiekool','savooikool','savooi'],b:[3,4],z:[4,5],o:[10,11,12,1]},
+ {n:'Spruitjes',w:['spruitjes','spruitkool','spruiten'],b:[3,4],z:[4],o:[10,11,12,1,2]},
+ {n:'Bloemkool',w:['bloemkool'],b:[3,4],z:[4,5],o:[7,8,9,10]},
+ {n:'Broccoli',w:['broccoli'],b:[3,4],z:[4,5,6],o:[7,8,9,10]},
+ {n:'Boerenkool',w:['boerenkool'],b:[],z:[5,6],o:[11,12,1,2]},
+ {n:'Ui',w:['ui','uien','uitje','uitjes','ajuin','ajuinen'],b:[],z:[3,4],o:[7,8,9]},
+ {n:'Sjalot',w:['sjalot','sjalotten','sjalotje','sjalotjes'],b:[],z:[2,3,4],o:[7,8]},
+ {n:'Knoflook',w:['knoflook','look','teentje knoflook','teentjes knoflook'],b:[],z:[10,11],o:[6,7]},
+ {n:'Prei',w:['prei','preien'],b:[2,3],z:[3,4],o:[9,10,11,12,1,2,3]},
+ {n:'Wortel',w:['wortel','wortels','wortelen','worteltjes'],b:[],z:[3,4,5,6,7],o:[6,7,8,9,10,11]},
+ {n:'Pastinaak',w:['pastinaak','pastinaken'],b:[],z:[3,4,5],o:[10,11,12,1,2]},
+ {n:'Rode biet',w:['rode biet','rode bieten','biet','bieten','bietjes'],b:[],z:[4,5,6,7],o:[7,8,9,10]},
+ {n:'Knolselder',w:['knolselder','selderknol'],b:[2,3],z:[],o:[9,10,11]},
+ {n:'Selder',w:['selder','bleekselder','selderij','groene selder'],b:[2,3],z:[],o:[7,8,9,10]},
+ {n:'Venkel',w:['venkel','venkelknol'],b:[],z:[6,7],o:[9,10]},
+ {n:'Tomaat',w:['tomaat','tomaten','tomaatjes','kerstomaten','kerstomaatjes'],b:[2,3,4],z:[],o:[7,8,9,10]},
+ {n:'Paprika',w:['paprika','paprikas',"paprika's"],b:[2,3],z:[],o:[8,9,10]},
+ {n:'Aubergine',w:['aubergine','aubergines'],b:[2,3],z:[],o:[8,9]},
+ {n:'Courgette',w:['courgette','courgettes'],b:[4],z:[5,6],o:[7,8,9]},
+ {n:'Komkommer',w:['komkommer','komkommers'],b:[4],z:[5],o:[7,8,9]},
+ {n:'Pompoen',w:['pompoen','pompoenen','butternut','potimarron'],b:[4],z:[5,6],o:[9,10]},
+ {n:'Maïs',w:['mais','maiskolf','maiskolven'],b:[4],z:[5],o:[8,9]},
+ {n:'Sla',w:['sla','kropsla','ijsbergsla','pluksla','eikenbladsla','veldsla'],b:[2,3],z:[3,4,5,6,7,8],o:[5,6,7,8,9,10]},
+ {n:'Spinazie',w:['spinazie'],b:[],z:[3,4,8,9],o:[4,5,6,10,11]},
+ {n:'Snijbiet',w:['snijbiet'],b:[],z:[4,5,6],o:[6,7,8,9,10]},
+ {n:'Radijs',w:['radijs','radijsjes','radijzen'],b:[],z:[3,4,5,6,7,8,9],o:[4,5,6,7,8,9,10]},
+ {n:'Erwten',w:['erwten','erwtjes','doperwten','peultjes','peulen'],b:[],z:[3,4,5,6],o:[6,7,8]},
+ {n:'Tuinbonen',w:['tuinbonen','tuinboon'],b:[],z:[2,3,4],o:[6,7]},
+ {n:'Sperziebonen',w:['sperziebonen','prinsessenbonen','snijbonen','boontjes','groene bonen','stokbonen'],b:[],z:[5,6,7],o:[7,8,9]},
+ {n:'Aardappel',w:['aardappel','aardappelen','aardappels','krieltjes','patatten'],b:[],z:[4],o:[7,8,9]},
+ {n:'Rabarber',w:['rabarber'],b:[],z:[3,4],o:[4,5,6]},
+ {n:'Peterselie',w:['peterselie'],b:[],z:[3,4,5,6,7],o:[5,6,7,8,9,10,11]},
+ {n:'Bieslook',w:['bieslook'],b:[3],z:[4,5],o:[4,5,6,7,8,9,10]},
+ {n:'Kervel',w:['kervel'],b:[],z:[3,4,5,8,9],o:[4,5,6,9,10]},
+ {n:'Basilicum',w:['basilicum'],b:[3,4,5],z:[],o:[6,7,8,9]},
+ {n:'Dille',w:['dille'],b:[],z:[4,5,6,7],o:[6,7,8,9]},
+ {n:'Koriander',w:['koriander'],b:[],z:[4,5,6,7,8],o:[6,7,8,9]},
+ {n:'Dragon',w:['dragon'],b:[3,4],z:[],o:[6,7,8,9]},
+ {n:'Tijm',w:['tijm'],b:[3,4],z:[],o:[5,6,7,8,9,10]},
+ {n:'Salie',w:['salie'],b:[3,4],z:[],o:[5,6,7,8,9,10]},
+ {n:'Rozemarijn',w:['rozemarijn'],b:[3,4],z:[],o:[5,6,7,8,9,10]},
+ {n:'Munt',w:['munt','muntblaadjes'],b:[3,4],z:[],o:[5,6,7,8,9]},
+];
+const vegRe=v=>v._re||(v._re=new RegExp('(^|[^a-z])('+v.w.map(x=>norm(x).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')($|[^a-z])'));
+/* Groenten uit dit recept die nog niet als zaadzakje in de moestuin staan */
+function vegMissing(r){
+  const out=[];
+  for(const line of (r.ingredienten||[])){
+    const x=norm(line);
+    for(const v of VEG){
+      if(out.includes(v)||!vegRe(v).test(x))continue;
+      const have=S.seeds.some(s=>norm(s.groente)===norm(v.n)||terms(s).some(w=>v.w.some(k=>norm(k)===w)));
+      if(!have)out.push(v);
+    }
+  }
+  return out;
+}
+async function addVeg(name){
+  const v=VEG.find(x=>x.n===name);if(!v)return false;
+  if(S.seeds.some(s=>norm(s.groente)===norm(v.n))){toast(v.n+' staat al in je moestuin');return false}
+  return await save('seeds',null,{groente:v.n,ras:'',leverancier:'',aantal:0,eenheid:'zaden',minimum:0,binnen:v.b,buiten:v.z,oogst:v.o,
+    kiemkrachtTot:'',herinnering:true,zoektermen:v.w.filter(w=>norm(w)!==norm(v.n)).join(', '),
+    notitie:'Standaard zaaitijden, door de app ingevuld. Pas ze aan naar wat op je zaadzakje staat.',voorbeeld:false},true);
+}
+function vegBox(r){
+  const miss=vegMissing(r);if(!miss.length)return '';
+  return `<div class="vegbox"><div><span class="label">Ook kweken in je moestuin?</span>
+    <p class="muted" style="margin:4px 0 0;font-size:13px">Deze groenten uit het recept staan nog niet in je moestuin. Tik erop om ze toe te voegen: de zaaikalender en herinneringen vullen zich dan vanzelf.</p></div>
+    <div class="row">${miss.map(v=>`<button class="chip" data-act="addVeg" data-v="${esc(v.n)}" data-id="${r.id}">+ ${esc(v.n)}</button>`).join('')}${miss.length>1?`<button class="chip on" data-act="addVegAll" data-id="${r.id}">+ Alle ${miss.length} toevoegen</button>`:''}</div></div>`;
+}
+
+function addSheet(){
+  S.open={t:'add'};
+  sheet(`<div class="sh-h"><div><span class="label">Recepten</span><h2>Recept toevoegen</h2></div><button class="btn ghost" data-act="close" aria-label="Sluiten">✕</button></div>
+  <div class="sh-b"><p class="muted" style="margin:0">Kies hoe je het recept wil toevoegen. Daarna zie je het ingevulde recept en klik je op <b>Opslaan</b>.</p>
+   <div class="addopts">
+    <label class="addopt"><span class="ic" aria-hidden="true">📄</span><span><b>Uit een Word-bestand</b><small>Kies één of meer recepten (.docx). De app vult titel, ingrediënten, bereiding en foto zelf in.</small></span><input id="docx_in" type="file" accept=".docx,.doc,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword" multiple hidden></label>
+    <button class="addopt" data-act="pasteOpen"><span class="ic" aria-hidden="true">📋</span><span><b>Tekst plakken</b><small>Kopieer een recept uit een mail, website of bericht en plak het hier.</small></span></button>
+    <button class="addopt" data-act="newRecipe"><span class="ic" aria-hidden="true">✍️</span><span><b>Zelf typen</b><small>Begin met een leeg recept.</small></span></button>
+   </div>
+   <p class="muted" style="margin:0;font-size:13px">Op de computer kan je Word-bestanden ook gewoon naar dit venster slepen.</p>
+  </div>`);
+}
+function pasteSheet(){
+  S.open={t:'paste'};
+  sheet(`<div class="sh-h"><div><span class="label">Recept toevoegen</span><h2>Tekst plakken</h2></div><button class="btn ghost" data-act="close" aria-label="Sluiten">✕</button></div>
+  <div class="sh-b">
+   <p class="muted" style="margin:0">Plak hieronder het hele recept. Werkt het best met de woorden <b>Ingrediënten</b> en <b>Bereiding</b> boven elk deel, maar dat hoeft niet.</p>
+   <textarea id="paste_txt" class="sharetext" style="min-height:260px;font-family:var(--f-body);font-size:15px" placeholder="Bv.
+Stoofvlees van oma
+4 personen
+
+Ingrediënten
+1 kg stoofvlees
+2 uien
+
+Bereiding
+- Bak het vlees aan.
+- Voeg uien en bier toe."></textarea>
+   <div class="row" style="justify-content:space-between"><button class="btn" data-act="addMenu">← Terug</button><button class="btn primary" data-act="pasteGo">Inlezen</button></div>
+  </div>`);
+  setTimeout(()=>$('#paste_txt')?.focus(),50);
 }
 async function storePhoto(b){return uploadPhoto(await resize(b))}
 
@@ -688,6 +862,11 @@ document.addEventListener('click',async e=>{
   if(a==='catRen'){const inp=el.parentElement.querySelector('input');return renameCat(el.dataset.v,inp.value)}
   if(a==='catDel'){const n=catCount(el.dataset.v);if(n&&el.dataset.confirm!=='1'){el.dataset.confirm='1';el.textContent=`${n} recept${n>1?'en':''} – zeker?`;setTimeout(()=>{if(el.isConnected){el.dataset.confirm='';el.textContent='Verwijderen'}},4000);return}return deleteCat(el.dataset.v)}
   if(a==='share')return shareSheet(id);
+  if(a==='addMenu')return addSheet();
+  if(a==='pasteOpen')return pasteSheet();
+  if(a==='pasteGo'){const t=$('#paste_txt').value;if(!t.trim()){toast('Plak eerst een recept in het vak');return}const r=parseText(t);r.fotos=[];S.impQ=[{r,name:''}];S.impN=1;return nextImport()}
+  if(a==='addVeg'){el.disabled=true;if(await addVeg(el.dataset.v)){toast(el.dataset.v+' staat nu in je moestuin');render()}else el.disabled=false;return}
+  if(a==='addVegAll'){el.disabled=true;const r=S.recipes.find(x=>x.id===id);let n=0;for(const v of vegMissing(r))if(await addVeg(v.n))n++;toast(`${n} groenten toegevoegd aan je moestuin`);render();return}
   if(a==='video')return videoSheet(id);
   if(a==='shNative'){const r=S.recipes.find(x=>x.id===id);const data={title:r.titel,text:shareText(r)};if(S.shareFile)data.files=[S.shareFile];
     try{await navigator.share(data)}catch(err){if(err?.name==='AbortError')return;if(data.files){try{delete data.files;await navigator.share(data);return}catch(e2){if(e2?.name==='AbortError')return}}toast('Delen lukt hier niet; gebruik WhatsApp, e-mail of kopiëren.')}return}
@@ -705,6 +884,12 @@ document.addEventListener('click',async e=>{
   if(a==='ics'){const {text,n}=buildIcs();if(!n){toast('Zet bij minstens één zaadzakje de herinnering aan.');return}return offer('zaaikalender.ics',text,`${n} herinneringen klaar voor je agenda`)}
   if(a==='export'){return offer('tuin-en-tafel-backup.json',JSON.stringify({recepten:S.recipes,zaden:S.seeds,categorieen:S.catDocs.map(c=>c.naam)},null,2),'Back-up opgeslagen')}
 });
+const isDocx=e=>[...(e.dataTransfer?.items||[])].some(i=>i.kind==='file');
+document.addEventListener('dragover',e=>{if(!S.user||!isDocx(e))return;e.preventDefault();document.body.classList.add('drag')});
+document.addEventListener('dragleave',e=>{if(!e.relatedTarget)document.body.classList.remove('drag')});
+document.addEventListener('drop',async e=>{if(!S.user||!isDocx(e))return;e.preventDefault();document.body.classList.remove('drag');
+  const fs=[...e.dataTransfer.files].filter(f=>/\.docx?$/i.test(f.name));if(!fs.length){toast('Sleep een Word-bestand (.docx)');return}
+  if(location.hash!=='#recepten')location.hash='#recepten';await importWord(fs)});
 document.addEventListener('change',async e=>{
   if(e.target.id==='docx_in'){const fs=[...e.target.files];e.target.value='';if(fs.length)await importWord(fs);return}
   if(e.target.id==='imp_file')return importFile(e.target);
