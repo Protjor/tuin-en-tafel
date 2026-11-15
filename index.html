@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Tuin &amp; Tafel · Demo</title>
-<meta name="description" content="Demo van Tuin &amp; Tafel: recepten, moestuinzaden en zaaikalender in één app.">
+<meta name="description" content="Tuin &amp; Tafel · Van oogst tot gerecht: recepten, moestuinzaden en zaaikalender in één app.">
 <meta name="theme-color" content="#EEF1E9">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon-192.png">
@@ -62,6 +62,21 @@ header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background
 .brand h1{font-size:26px;line-height:1}
 .brand h1 i{font-style:normal;color:var(--beet)}
 .brand small{color:var(--ink-2);font-size:12px}
+.brand .bt{display:grid;gap:3px}
+.brand .tagline{font-family:var(--f-display);font-style:italic;font-size:13.5px;color:var(--leaf);letter-spacing:.01em;line-height:1}
+.packet .pimg{aspect-ratio:16/7;overflow:hidden;border-bottom:1px solid var(--line);background:var(--leaf-soft)}
+.packet .pimg img{width:100%;height:100%;object-fit:cover;display:block}
+.packet .grow{display:flex;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--ink-2)}
+.packet .grow span{background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:1px 8px}
+.seedphoto{width:100%;max-height:260px;object-fit:cover;border-radius:12px;display:block}
+.growfacts{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;background:var(--leaf-soft);border-radius:12px;padding:12px 14px}
+.growfacts div{display:grid;gap:2px}
+.growfacts b{font-weight:600}
+.opts{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+.opts button{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 11px;font-size:13px;cursor:pointer;color:var(--ink);font-weight:500}
+.opts button.on{background:var(--leaf);border-color:var(--leaf);color:#fff}
+fieldset.grow{border:1px solid var(--line);border-radius:12px;padding:12px 14px 14px;display:grid;gap:14px;margin:0}
+fieldset.grow legend{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);font-weight:600;padding:0 6px}
 nav.tabs{display:flex;gap:4px;overflow-x:auto;max-width:100%;scrollbar-width:none}
 nav.tabs a{padding:7px 12px;border-radius:999px;color:var(--ink-2);text-decoration:none;font-weight:600;font-size:14px;white-space:nowrap}
 nav.tabs a[aria-current="page"]{background:var(--ink);color:var(--paper)}
@@ -249,7 +264,7 @@ html.live .demobar{display:none}
 
 <div class="demobar"><div class="wrap"><b>Demo</b><span>Probeer gerust alles uit. Je wijzigingen blijven alleen in deze browser.</span><button class="btn sm" data-act="demoreset">Demo herstellen</button></div></div>
 <header class="top"><div class="wrap">
-  <div class="brand"><h1>Tuin <i>&amp;</i> Tafel</h1><small id="sync" class="status">laden…</small></div>
+  <div class="brand"><div class="bt"><h1>Tuin <i>&amp;</i> Tafel</h1><span class="tagline">Van oogst tot gerecht</span></div><small id="sync" class="status">laden…</small></div>
   <nav class="tabs" id="tabs">
     <a href="#vandaag" data-v="vandaag">Vandaag</a>
     <a href="#recepten" data-v="recepten">Recepten<span class="n" id="nR"></span></a>
@@ -291,6 +306,31 @@ function nextSow(s){for(let k=0;k<12;k++){const m=((CUR-1+k)%12)+1;if(sowsIn(s,m
 function where(s,m){const a=[];if((s.binnen||[]).includes(m))a.push('binnen');if((s.buiten||[]).includes(m))a.push('buiten');return a.join(' + ')}
 function seedName(s){return s.groente+(s.ras?` ‘${s.ras}’`:'')}
 const absUrl=u=>{try{return new URL(u,location.href).href}catch(e){return u}};
+/* Kweekgegevens van een zaadzakje: eigen velden, of (oude zakjes) uit regels "Zaaidiepte: …" in de notitie */
+const GROW_RE=/^\s*(zaaidiepte|licht|plantafstand|standplaats|hoogte(?:\s*plant)?)\s*:\s*(.+?)\s*$/i;
+const noCm=v=>String(v||'').replace(/\s*cm\.?\s*$/i,'').trim();
+function growInfo(s){
+  const g={zaaidiepte:s.zaaidiepte||'',licht:s.licht||'',standplaats:s.standplaats||'',afstandPlant:s.afstandPlant||'',afstandRij:s.afstandRij||'',hoogte:s.hoogte||''};
+  const rest=[];
+  for(const line of String(s.notitie||'').split('\n')){
+    const m=line.match(GROW_RE);if(!m){rest.push(line);continue}
+    const k=norm(m[1]),v=m[2];
+    if(k==='zaaidiepte'){if(!g.zaaidiepte)g.zaaidiepte=v}
+    else if(k==='licht'){if(!g.licht)g.licht=v}
+    else if(k==='standplaats'){if(!g.standplaats)g.standplaats=v}
+    else if(k.startsWith('hoogte')){if(!g.hoogte)g.hoogte=noCm(v)}
+    else if(k==='plantafstand'&&!g.afstandPlant&&!g.afstandRij){
+      const NUM='(\\d+(?:[.,]\\d+)?(?:\\s*[–-]\\s*\\d+(?:[.,]\\d+)?)?)\\s*cm\\s*(?:tussen\\s*de\\s*)?';const pl=v.match(new RegExp(NUM+'plant','i')),rj=v.match(new RegExp(NUM+'rij','i'));
+      if(pl||rj){g.afstandPlant=pl?pl[1].trim():'';g.afstandRij=rj?rj[1].trim():''}else g.afstandPlant=noCm(v)}
+  }
+  g.notitie=rest.join('\n').replace(/^\s+|\s+$/g,'');
+  return g;
+}
+const growList=g=>[g.zaaidiepte&&['Zaaidiepte',g.zaaidiepte],g.licht&&['Licht',g.licht],(g.afstandPlant||g.afstandRij)&&['Plantafstand',[g.afstandPlant&&g.afstandPlant+' cm tussen planten',g.afstandRij&&g.afstandRij+' cm tussen rijen'].filter(Boolean).join(', ')],g.standplaats&&['Standplaats',g.standplaats],g.hoogte&&['Hoogte plant',g.hoogte+' cm']].filter(Boolean);
+/* keuzeknoppen onder een invulveld: één keuze (single) of meerdere (komma-lijst) */
+const opts=(target,list,multi)=>`<div class="opts" data-target="${target}"${multi?' data-multi="1"':''}>${list.map(o=>`<button type="button" data-v="${esc(o)}">${esc(o)}</button>`).join('')}</div>`;
+function syncOpts(){document.querySelectorAll('.opts').forEach(o=>{const inp=document.getElementById(o.dataset.target);if(!inp)return;const vals=String(inp.value).split(',').map(x=>norm(x).trim());
+  o.querySelectorAll('button').forEach(b=>b.classList.toggle('on',o.dataset.multi?vals.includes(norm(b.dataset.v)):norm(inp.value).trim()===norm(b.dataset.v)))})}
 const DEFCATS=['Voorgerecht','Soep','Hoofdgerecht','Groenten','Vlees','Vis','Pasta & Pizza','Dessert'];
 function allCats(){return [...new Set([...S.catDocs.map(c=>c.naam),...S.recipes.map(r=>r.categorie)].filter(Boolean))].sort((a,b)=>a.localeCompare(b,'nl'))}
 const catCount=c=>S.recipes.filter(r=>r.categorie===c).length;
@@ -362,10 +402,12 @@ function vGarden(){
 }
 function sCard(s){
   const n=recipesForSeed(s).length;
-  return `<button class="packet" data-act="seed" data-id="${s.id}"><div class="pb">
+  const g=growInfo(s);const chips=[g.zaaidiepte&&'↧ '+g.zaaidiepte,g.standplaats&&'☀ '+g.standplaats,g.hoogte&&'↕ '+g.hoogte+' cm'].filter(Boolean);
+  return `<button class="packet" data-act="seed" data-id="${s.id}">${s.foto?`<div class="pimg"><img src="${esc(s.foto.url)}" alt="" loading="lazy"></div>`:''}<div class="pb">
   <div class="row" style="justify-content:space-between;align-items:start"><div><div class="veg">${esc(s.groente)}</div>${s.ras?`<div class="ras">‘${esc(s.ras)}’</div>`:''}</div>
   <div class="row" style="gap:4px">${s.voorbeeld?'<span class="pill ex">voorbeeld</span>':''}${sowsIn(s,CUR)?'<span class="pill now">nu zaaien</span>':''}${isLow(s)?'<span class="pill low">bijna op</span>':''}</div></div>
   ${strip(s)}
+  ${chips.length?`<div class="grow">${chips.map(c=>`<span>${esc(c)}</span>`).join('')}</div>`:''}
   <div class="foot"><span class="stock"><b>${esc(s.aantal??0)}</b>${esc(s.eenheid||'zaden')}</span><span>${n?`${n} recept${n>1?'en':''}`:'geen recepten'}${s.herinnering?' · 🔔':''}</span></div>
   </div></button>`;
 }
@@ -406,13 +448,14 @@ function showSeed(id){
   sheet(`<div class="sh-h"><div><span class="label">Zaadzakje${s.leverancier?' · '+esc(s.leverancier):''}</span><h2>${esc(s.groente)}${s.ras?` <span class="muted" style="font-style:italic">‘${esc(s.ras)}’</span>`:''}</h2></div><button class="btn ghost" data-act="close" aria-label="Sluiten">✕</button></div>
   <div class="sh-b">
    ${s.voorbeeld?'<div class="note">Dit is een voorbeeldzakje om de app te tonen. Pas het aan naar je eigen zaden of verwijder het.</div>':''}
+   ${s.foto?`<img class="seedphoto" src="${esc(s.foto.url)}" alt="${esc(s.groente)}">`:''}
    <div class="row" style="justify-content:space-between;gap:18px">
      <div class="stockctl"><button class="btn" data-act="stock" data-d="-1" data-id="${s.id}" aria-label="Eén minder">−</button><b>${esc(s.aantal??0)}</b><button class="btn" data-act="stock" data-d="1" data-id="${s.id}" aria-label="Eén meer">+</button><span class="muted">${esc(s.eenheid||'zaden')}<br><small>minimum ${esc(s.minimum??0)}</small></span></div>
      <div class="row">${isLow(s)?'<span class="pill low">bijna op</span>':''}${s.kiemkrachtTot?`<span class="muted">kiemkracht tot <b class="mono">${esc(s.kiemkrachtTot)}</b></span>`:''}</div>
    </div>
    ${strip(s,true)}${legend}
    <div class="facts">${(s.binnen||[]).length?`<div><span class="label">Binnen zaaien</span><b>${s.binnen.map(m=>M[m-1]).join(', ')}</b></div>`:''}${(s.buiten||[]).length?`<div><span class="label">Buiten zaaien</span><b>${s.buiten.map(m=>M[m-1]).join(', ')}</b></div>`:''}${(s.oogst||[]).length?`<div><span class="label">Oogst</span><b>${s.oogst.map(m=>M[m-1]).join(', ')}</b></div>`:''}<div><span class="label">Herinnering</span><b>${s.herinnering?'aan':'uit'}</b></div></div>
-   ${s.notitie?`<div class="note">${esc(s.notitie).replace(/\n/g,'<br>')}</div>`:''}
+   ${(()=>{const g=growInfo(s),l=growList(g);return (l.length?`<div class="growfacts">${l.map(([k,v])=>`<div><span class="label">${k}</span><b>${esc(v)}</b></div>`).join('')}</div>`:'')+(g.notitie?`<div class="note">${esc(g.notitie).replace(/\n/g,'<br>')}</div>`:'')})()}
    <div style="display:grid;gap:8px"><span class="label">Recepten met ${esc(s.groente.toLowerCase())}</span>
    ${rs.length?`<div class="list">${rs.map(r=>`<button class="li" data-act="recipe" data-id="${r.id}"><div class="t"><b>${esc(r.titel)}</b><small>${esc(r.categorie||'')}${r.tijd?' · '+esc(r.tijd):''}</small></div><span class="muted">→</span></button>`).join('')}</div>`:`<div class="muted">Nog geen recept met ${esc(s.groente.toLowerCase())}. Voeg zoektermen toe bij dit zakje (bv. “tuinkruiden”) of maak een recept.</div>`}</div>
    <div class="row" style="justify-content:space-between"><button class="btn danger" data-act="del" data-k="seeds" data-id="${s.id}">Verwijderen</button><button class="btn primary" data-act="editSeed" data-id="${s.id}">Bewerken</button></div>
@@ -515,7 +558,8 @@ function drawThumbs(){const t=$('#thumbs');if(!t)return;t.innerHTML=S.form.fotos
 function monthPick(id,cls,sel){return `<div class="monthpick ${cls}" id="${id}">${M.map((m,i)=>`<button type="button" class="${(sel||[]).includes(i+1)?'on':''}" data-m="${i+1}" aria-pressed="${(sel||[]).includes(i+1)}">${m}</button>`).join('')}</div>`}
 function seedForm(s){
   s=s||{groente:'',ras:'',leverancier:'',aantal:'',eenheid:'zaden',minimum:'',binnen:[],buiten:[],oogst:[],kiemkrachtTot:'',herinnering:true,zoektermen:'',notitie:''};
-  S.form={k:'seeds',id:s.id||null,voorbeeld:!!s.voorbeeld};
+  S.form={k:'seeds',id:s.id||null,voorbeeld:!!s.voorbeeld,foto:s.foto||null};
+  const g=growInfo(s);
   sheet(`<div class="sh-h"><h2>${s.id?'Zaadzakje bewerken':'Nieuw zaadzakje'}</h2><button class="btn ghost" data-act="close" aria-label="Sluiten">✕</button></div>
   <div class="sh-b"><form class="f" id="sf">
    <div class="two"><label>Groente<input id="s_groente" required value="${esc(s.groente)}" placeholder="Rodekool"></label><label>Ras<input id="s_ras" value="${esc(s.ras)}" placeholder="bv. Rodynda"></label><label>Leverancier<input id="s_lev" value="${esc(s.leverancier)}"></label></div>
@@ -527,11 +571,24 @@ function seedForm(s){
    <label>Buiten zaaien</label>${monthPick('mp_out','out',s.buiten)}
    <label>Oogst</label>${monthPick('mp_h','harv',s.oogst)}
    <label class="check"><input type="checkbox" id="s_her" ${s.herinnering?'checked':''}> Herinnering om te zaaien</label>
+   <fieldset class="grow"><legend>Kweekgegevens</legend>
+    <p class="muted" style="margin:0;font-size:13px">Tik een keuze aan of typ zelf. Alles is optioneel.</p>
+    <label>Zaaidiepte<input id="s_diep" value="${esc(g.zaaidiepte)}" placeholder="bv. 0,5 cm">${opts('s_diep',['aan de oppervlakte','0,5 cm','1 cm','2 cm','3 cm','5 cm'])}</label>
+    <label>Licht<input id="s_licht" value="${esc(g.licht)}" placeholder="bv. lichtkiemer">${opts('s_licht',['lichtkiemer','donkerkiemer','maakt niet uit'])}</label>
+    <div class="two"><label>Plantafstand tussen planten (cm)<input id="s_apl" inputmode="decimal" value="${esc(g.afstandPlant)}" placeholder="bv. 2">${opts('s_apl',['2','5','10','20','30','50'])}</label>
+    <label>Plantafstand tussen rijen (cm)<input id="s_arij" inputmode="decimal" value="${esc(g.afstandRij)}" placeholder="bv. 10 - 15">${opts('s_arij',['10 - 15','20','30','40','60'])}</label></div>
+    <label>Standplaats <span class="muted" style="font-weight:400">meerdere mogelijk</span><input id="s_stand" value="${esc(g.standplaats)}" placeholder="bv. zon, halfschaduw">${opts('s_stand',['zon','halfschaduw','schaduw'],true)}</label>
+    <label>Hoogte plant (cm)<input id="s_hoog" inputmode="decimal" value="${esc(g.hoogte)}" placeholder="bv. 15">${opts('s_hoog',['15','30','50','100','150'])}</label>
+   </fieldset>
+   <div style="display:grid;gap:8px"><span class="label">Foto van het gewas</span><div class="thumbs" id="s_thumb"></div>
+    <label class="btn" style="justify-self:start;cursor:pointer">+ Foto kiezen<input id="s_foto" type="file" accept="image/*" hidden></label></div>
    <label>Extra zoektermen voor recepten <span class="muted" style="font-weight:400">komma-gescheiden, bv. “tuinkruiden, kruiden”</span><input id="s_zoek" value="${esc(s.zoektermen)}"></label>
-   <label>Notitie<textarea id="s_not" style="min-height:70px" placeholder="Plantafstand, voorkweek, ervaring…">${esc(s.notitie)}</textarea></label>
-   <div class="row" style="justify-content:flex-end"><button type="button" class="btn" data-act="close">Annuleren</button><button class="btn primary" type="submit">Opslaan</button></div>
+   <label>Notitie<textarea id="s_not" style="min-height:90px" placeholder="Voorkweek, ervaring, smaak…">${esc(g.notitie)}</textarea></label>
+   <div class="row" style="justify-content:flex-end"><button type="button" class="btn" data-act="close">Annuleren</button><button class="btn primary" type="submit" id="s_save">Opslaan</button></div>
   </form></div>`);
+  syncOpts();drawSeedThumb();
 }
+function drawSeedThumb(){const t=$('#s_thumb');if(!t)return;const f=S.form.foto;t.innerHTML=f?`<figure><img src="${esc(f.url)}" alt=""><button type="button" data-act="rmSeedFoto" aria-label="Foto verwijderen">×</button></figure>`:''}
 const picked=id=>[...document.querySelectorAll(`#${id} button.on`)].map(b=>+b.dataset.m);
 const lines=v=>v.split('\n').map(s=>s.replace(/^\s*[-•*]\s*/,'').trim()).filter(Boolean);
 
@@ -844,9 +901,13 @@ function render(){
 function route(){const h=location.hash.slice(1);S.view=['recepten','moestuin','kalender'].includes(h)?h:'vandaag';closeSheet();render();window.scrollTo(0,0)}
 addEventListener('hashchange',route);
 
-document.addEventListener('input',e=>{if(e.target.id==='q'){S.q=e.target.value;render()}if(e.target.id==='sq'){S.sq=e.target.value;render()}});
+document.addEventListener('input',e=>{if(e.target.closest&&e.target.closest('fieldset.grow'))syncOpts();if(e.target.id==='q'){S.q=e.target.value;render()}if(e.target.id==='sq'){S.sq=e.target.value;render()}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('#layer').innerHTML)closeSheet()});
 document.addEventListener('click',async e=>{
+  const ob=e.target.closest('.opts button');if(ob){e.preventDefault();const o=ob.parentElement,inp=document.getElementById(o.dataset.target);
+    if(o.dataset.multi){let v=inp.value.split(',').map(x=>x.trim()).filter(Boolean);v=v.some(x=>norm(x)===norm(ob.dataset.v))?v.filter(x=>norm(x)!==norm(ob.dataset.v)):[...v,ob.dataset.v];inp.value=v.join(', ')}
+    else inp.value=norm(inp.value).trim()===norm(ob.dataset.v)?'':ob.dataset.v;
+    syncOpts();return}
   const mp=e.target.closest('.monthpick button');if(mp){mp.classList.toggle('on');mp.setAttribute('aria-pressed',mp.classList.contains('on'));return}
   const el=e.target.closest('[data-act]');if(!el)return;const a=el.dataset.act,id=el.dataset.id;
   if(a==='close'){if(e.target===el||el.tagName==='BUTTON')closeSheet();return}
@@ -876,6 +937,7 @@ document.addEventListener('click',async e=>{
   if(a==='delEx'){if(el.dataset.confirm!=='1'){el.dataset.confirm='1';el.textContent='Zeker? Klik opnieuw';setTimeout(()=>{if(el.isConnected){el.dataset.confirm='';el.textContent='Voorbeelden verwijderen'}},4000);return}
     el.disabled=true;for(const s of S.seeds.filter(s=>s.voorbeeld))if(!await removeItem('seeds',s.id))break;toast('Voorbeelden verwijderd – je moestuin is leeg');render();return}
   if(a==='qadd'){const v=el.dataset.v;let qs=S.q.split(',').map(s=>s.trim()).filter(Boolean);qs=qs.some(q=>norm(q)===norm(v))?qs.filter(q=>norm(q)!==norm(v)):[...qs,v];S.q=qs.join(', ');return render()}
+  if(a==='rmSeedFoto'){S.form.foto=null;return drawSeedThumb()}
   if(a==='rmfoto'){S.form.fotos.splice(+el.dataset.i,1);return drawThumbs()}
   if(a==='stock'){const s=S.seeds.find(x=>x.id===id);const v=Math.max(0,Number(s.aantal||0)+Number(el.dataset.d));const {id:_,...rest}=s;await save('seeds',id,{...rest,aantal:v});return}
   if(a==='del'){if(el.dataset.confirm!=='1'){el.dataset.confirm='1';el.textContent='Zeker? Klik opnieuw';setTimeout(()=>{if(el.isConnected){el.dataset.confirm='';el.textContent='Verwijderen'}},4000);return}
@@ -902,6 +964,9 @@ document.addEventListener('change',async e=>{
       $('#r_video').value=S.sb.storage.from('fotos').getPublicUrl(path).data.publicUrl;st.textContent='✓ Video klaar. Klik op Opslaan.'}
     catch(err){st.textContent='';toast('Video uploaden mislukt: '+(err?.message||''))}
     btn.disabled=false;return}
+  if(e.target.id==='s_foto'){const f=e.target.files[0];e.target.value='';if(!f)return;const btn=$('#s_save');btn.disabled=true;btn.textContent='Foto uploaden…';
+    try{S.form.foto=await storePhoto(f);drawSeedThumb()}catch(err){toast('Foto uploaden mislukt: '+(err?.message||''))}
+    btn.disabled=false;btn.textContent='Opslaan';return}
   if(e.target.id==='docx_in'){const fs=[...e.target.files];e.target.value='';if(fs.length)await importWord(fs);return}
   if(e.target.id==='imp_file')return importFile(e.target);
   if(e.target.id==='r_cat'){const nw=e.target.value==='__new';$('#r_catnew_l').hidden=!nw;if(nw)$('#r_catnew').focus();return}
@@ -924,7 +989,8 @@ document.addEventListener('submit',async e=>{
   if(e.target.id==='sf'){
     const num=v=>v===''?0:Number(v);
     const d={groente:$('#s_groente').value.trim(),ras:$('#s_ras').value.trim(),leverancier:$('#s_lev').value.trim(),aantal:num($('#s_aantal').value),eenheid:$('#s_eenh').value,minimum:num($('#s_min').value),
-      kiemkrachtTot:$('#s_kiem').value.trim(),binnen:picked('mp_in'),buiten:picked('mp_out'),oogst:picked('mp_h'),herinnering:$('#s_her').checked,zoektermen:$('#s_zoek').value.trim(),notitie:$('#s_not').value.trim(),voorbeeld:false};
+      kiemkrachtTot:$('#s_kiem').value.trim(),binnen:picked('mp_in'),buiten:picked('mp_out'),oogst:picked('mp_h'),herinnering:$('#s_her').checked,zoektermen:$('#s_zoek').value.trim(),notitie:$('#s_not').value.trim(),voorbeeld:false,
+      zaaidiepte:$('#s_diep').value.trim(),licht:$('#s_licht').value.trim(),afstandPlant:noCm($('#s_apl').value),afstandRij:noCm($('#s_arij').value),standplaats:$('#s_stand').value.trim(),hoogte:noCm($('#s_hoog').value),foto:f.foto||null};
     if(!d.groente)return;const ok=await save('seeds',f.id,d);if(ok){S.form=null;closeSheet();render();showSeed(ok)}
   }
 });
@@ -972,7 +1038,7 @@ function authView(mode,msg){
       <div class="err" id="err"></div><button class="btn primary" style="justify-self:end">Wachtwoord opslaan</button></form>`,
     config:`<div class="note">Deze installatie is nog niet gekoppeld aan een database. Vul in <b>config.js</b> de Supabase-URL en de publieke sleutel in (zie LEESMIJ).</div>`
   }[mode];
-  $('#app').innerHTML=`<section class="auth"><div><span class="label">Recepten · zaden · zaaikalender</span><h2>${mode==='recovery'?'Nieuw wachtwoord':'Aanmelden'}</h2></div>${f}</section>`;
+  $('#app').innerHTML=`<section class="auth"><div><span class="label">Van oogst tot gerecht</span><h2>${mode==='recovery'?'Nieuw wachtwoord':'Aanmelden'}</h2></div>${f}</section>`;
   $('#sync').textContent='';
 }
 function settingsSheet(){

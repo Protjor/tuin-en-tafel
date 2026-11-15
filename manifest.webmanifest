@@ -1,7 +1,7 @@
 {
   "name": "Tuin & Tafel",
   "short_name": "Tuin & Tafel",
-  "description": "Recepten, moestuinzaden en zaaikalender",
+  "description": "Van oogst tot gerecht: recepten, moestuinzaden en zaaikalender",
   "start_url": "./#vandaag",
   "scope": "./",
   "display": "standalone",
