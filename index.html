@@ -240,11 +240,11 @@ details.how p{margin:8px 0 0;color:var(--ink-2)}
 body.drag #app{outline:3px dashed var(--leaf);outline-offset:6px;border-radius:12px}
 #print{display:none}
 @media print{
-  @page{size:A4;margin:14mm 14mm 16mm}
+  @page{size:A4;margin:14mm 0 16mm}
   html,body{background:#fff!important;color:#1E2A21!important}
   body>*:not(#print){display:none!important}
   body::before{display:none!important}
-  #print{display:block!important;font:11pt/1.45 var(--f-body);color:#1E2A21;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #print{display:block!important;box-sizing:border-box;width:100%;padding:8mm 18mm 4mm;font:11pt/1.45 var(--f-body);color:#1E2A21;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   #print h1{font-family:var(--f-display);font-weight:400;font-size:26pt;line-height:1.1;margin:2mm 0 1mm}
   #print .ph{font-size:8.5pt;letter-spacing:.12em;text-transform:uppercase;color:#4C5A4F;font-weight:600}
   #print .sub{font-style:italic;color:#4C5A4F;font-size:13pt}
