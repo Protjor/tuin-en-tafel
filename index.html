@@ -230,6 +230,7 @@ details.how p{margin:8px 0 0;color:var(--ink-2)}
 .catrow input{flex:1 1 160px;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-width:0}
 .chip .c{font-family:var(--f-mono);font-size:11px;opacity:.6}
 .chip.add{border-style:dashed;color:var(--ink-2)}
+.packet .famlab{display:block;font-size:10px;margin-bottom:2px;color:var(--leaf)}
 .addopts{display:grid;gap:10px}
 .addopt{display:flex;gap:14px;align-items:flex-start;text-align:left;width:100%;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:var(--paper);cursor:pointer;color:var(--ink);font:inherit}
 .addopt:hover{border-color:var(--leaf);background:var(--leaf-soft)}
@@ -355,6 +356,39 @@ const growList=g=>[g.zaaidiepte&&['Zaaidiepte',g.zaaidiepte],g.licht&&['Licht',g
 const opts=(target,list,multi)=>`<div class="opts" data-target="${target}"${multi?' data-multi="1"':''}>${list.map(o=>`<button type="button" data-v="${esc(o)}">${esc(o)}</button>`).join('')}</div>`;
 function syncOpts(){document.querySelectorAll('.opts').forEach(o=>{const inp=document.getElementById(o.dataset.target);if(!inp)return;const vals=String(inp.value).split(',').map(x=>norm(x).trim());
   o.querySelectorAll('button').forEach(b=>b.classList.toggle('on',o.dataset.multi?vals.includes(norm(b.dataset.v)):norm(inp.value).trim()===norm(b.dataset.v)))})}
+/* ---------- botanische familie ---------- */
+const FAMS=[
+ ['Kruisbloemigen','Brassicaceae',['kool','spruit','broccoli','koolrabi','raapstelen','raap','radijs','rammenas','rucola','tuinkers','waterkers','kers','mosterd','paksoi','pak choi','mizuna','koolzaad']],
+ ['Komkommerfamilie','Cucurbitaceae',['courgette','komkommer','augurk','pompoen','butternut','potimarron','meloen','watermeloen','kalebas','pattison']],
+ ['Nachtschadefamilie','Solanaceae',['tomaat','tomaten','paprika','peper','chili','jalapeno','aubergine','aardappel','physalis','tomatillo']],
+ ['Vlinderbloemigen','Fabaceae',['boon','bonen','erwt','erwten','peul','kapucijner','linze','kikkererwt','lupine','klaver','sojaboon']],
+ ['Schermbloemigen','Apiaceae',['wortel','pastinaak','selder','selderij','venkel','peterselie','dille','kervel','koriander','lavas','karwij','anijs','knolvenkel']],
+ ['Lookfamilie','Amaryllidaceae',['ui','uien','ajuin','sjalot','knoflook','look','prei','bieslook','daslook','lente-ui']],
+ ['Composietenfamilie','Asteraceae',['sla','andijvie','witloof','witlof','cichorei','radicchio','endive','artisjok','kardoen','schorseneer','zonnebloem','goudsbloem','dragon','kamille','stevia','yacon','aardpeer']],
+ ['Amarantenfamilie','Amaranthaceae',['spinazie','biet','bieten','snijbiet','quinoa','amarant','melde','zeekraal']],
+ ['Lipbloemigen','Lamiaceae',['basilicum','munt','tijm','salie','rozemarijn','oregano','marjolein','citroenmelisse','bonenkruid','lavendel','hysop']],
+ ['Grassenfamilie','Poaceae',['mais','citroengras','tarwe','rogge','haver']],
+ ['Valeriaanfamilie','Valerianaceae',['veldsla']],
+ ['Duizendknoopfamilie','Polygonaceae',['rabarber','zuring','boekweit']],
+ ['Rozenfamilie','Rosaceae',['aardbei','framboos','braam']],
+ ['Oost-Indische-kersfamilie','Tropaeolaceae',['oost-indische kers']],
+ ['Malvafamilie','Malvaceae',['okra','stokroos']],
+ ['Postelein','Montiaceae',['postelein','winterpostelein']],
+];
+const famLabel=f=>f[0]+' ('+f[1]+')';
+const FAM_LABELS=FAMS.map(famLabel);
+function guessFam(name){
+  const n=norm(name);if(!n)return '';
+  const hit=(w)=>w.length<3?new RegExp('(^|[^a-z])'+w+'($|[^a-z])').test(n):n.includes(w);
+  // eerst de lange, specifieke namen (bv. "oost-indische kers" vóór "kers", "veldsla" vóór "sla")
+  const all=[];FAMS.forEach(f=>f[2].forEach(w=>{const [word,skip]=w.split(':');all.push({w:norm(word),f,skip:skip==='-'})}));
+  all.sort((a,b)=>b.w.length-a.w.length);
+  for(const x of all)if(hit(x.w))return x.skip?'':famLabel(x.f);
+  return '';
+}
+/* familie van een zakje: zelf gekozen, anders herkend uit de naam */
+const famOf=s=>s.familie||guessFam(s.groente);
+const famShort=f=>String(f||'').replace(/\s*\(.*\)\s*$/,'');
 const DEFCATS=['Voorgerecht','Soep','Hoofdgerecht','Groenten','Vlees','Vis','Pasta & Pizza','Dessert'];
 function allCats(){return [...new Set([...S.catDocs.map(c=>c.naam),...S.recipes.map(r=>r.categorie)].filter(Boolean))].sort((a,b)=>a.localeCompare(b,'nl'))}
 const catCount=c=>S.recipes.filter(r=>r.categorie===c).length;
@@ -417,10 +451,14 @@ function rCard(r){
 
 function vGarden(){
   const q=norm(S.sq);
-  const list=S.seeds.filter(s=>!q||norm([s.groente,s.ras,s.leverancier,s.notitie].join(' ')).includes(q)).sort((a,b)=>a.groente.localeCompare(b.groente,'nl'));
+  const list=S.seeds.filter(s=>(!S.fam||(S.fam==='__none'?!famOf(s):famOf(s)===S.fam))&&(!q||norm([s.groente,s.ras,s.leverancier,s.notitie,famOf(s)].join(' ')).includes(q))).sort((a,b)=>a.groente.localeCompare(b.groente,'nl'));
+  const fams={};S.seeds.forEach(s=>{const f=famOf(s)||'Onbekend';fams[f]=(fams[f]||0)+1});
+  const famKeys=Object.keys(fams).sort((a,b)=>a==='Onbekend'?1:b==='Onbekend'?-1:a.localeCompare(b,'nl'));
   return `<div class="sec-head"><h2>Moestuin</h2><div class="row"><button class="btn" data-act="export">Back-up</button><button class="btn primary" data-act="newSeed">+ Zaadzakje</button></div></div>
-  <div class="row"><label class="search"><span aria-hidden="true" class="muted">⌕</span><input id="sq" type="search" placeholder="Zoek groente, ras of leverancier" value="${esc(S.sq)}" aria-label="Zoek in zaden"></label></div>
+  <div class="row"><label class="search"><span aria-hidden="true" class="muted">⌕</span><input id="sq" type="search" placeholder="Zoek groente, ras, leverancier of familie" value="${esc(S.sq)}" aria-label="Zoek in zaden"></label></div>
   ${S.seeds.some(s=>s.voorbeeld)?`<div class="note row" style="justify-content:space-between"><span>Er ${S.seeds.filter(s=>s.voorbeeld).length===1?'staat nog 1 voorbeeldzakje':`staan nog ${S.seeds.filter(s=>s.voorbeeld).length} voorbeeldzakjes`} in je moestuin. Liever van nul beginnen?</span><button class="btn sm danger" data-act="delEx">Voorbeelden verwijderen</button></div>`:''}
+  ${S.seeds.length?`<div class="row famrow"><span class="label">Botanische familie</span><button class="chip ${!S.fam?'on':''}" data-act="fam" data-v="">Alles <span class="c">${S.seeds.length}</span></button>${famKeys.map(f=>`<button class="chip ${S.fam===(f==='Onbekend'?'__none':f)?'on':''}" data-act="fam" data-v="${esc(f==='Onbekend'?'__none':f)}" title="${esc(f)}">${esc(famShort(f))} <span class="c">${fams[f]}</span></button>`).join('')}</div>
+  ${S.fam&&S.fam!=='__none'?`<p class="muted" style="margin:-6px 0 0;font-size:13px"><i>${esc(S.fam)}</i> · tip voor wisselteelt: zet planten uit dezelfde familie niet elk jaar op hetzelfde bed.</p>`:''}`:''}
   ${legend}
   ${list.length?`<div class="packets">${list.map(sCard).join('')}</div>`:`<div class="empty">${S.seeds.length?'Geen zaden gevonden.':'Nog geen zaden. Voeg je eerste zaadzakje toe met <b>+ Zaadzakje</b>.'}</div>`}`;
 }
@@ -428,7 +466,7 @@ function sCard(s){
   const n=recipesForSeed(s).length;
   const g=growInfo(s);const chips=[g.zaaidiepte&&'↧ '+g.zaaidiepte,g.standplaats&&'☀ '+g.standplaats,g.hoogte&&'↕ '+g.hoogte+' cm'].filter(Boolean);
   return `<button class="packet" data-act="seed" data-id="${s.id}"><div class="pb">
-  <div class="row" style="justify-content:space-between;align-items:start"><div><div class="veg">${esc(s.groente)}</div>${s.ras?`<div class="ras">‘${esc(s.ras)}’</div>`:''}</div>
+  <div class="row" style="justify-content:space-between;align-items:start"><div>${famOf(s)?`<span class="label famlab">${esc(famShort(famOf(s)))}</span>`:''}<div class="veg">${esc(s.groente)}</div>${s.ras?`<div class="ras">‘${esc(s.ras)}’</div>`:''}</div>
   <div class="row" style="gap:4px">${s.voorbeeld?'<span class="pill ex">voorbeeld</span>':''}${sowsIn(s,CUR)?'<span class="pill now">nu zaaien</span>':''}${isLow(s)?'<span class="pill low">bijna op</span>':''}</div></div>
   ${strip(s)}
   ${chips.length?`<div class="grow">${chips.map(c=>`<span>${esc(c)}</span>`).join('')}</div>`:''}
@@ -478,7 +516,7 @@ function showSeed(id){
      <div class="row">${isLow(s)?'<span class="pill low">bijna op</span>':''}${s.kiemkrachtTot?`<span class="muted">kiemkracht tot <b class="mono">${esc(s.kiemkrachtTot)}</b></span>`:''}</div>
    </div>
    ${strip(s,true)}${legend}
-   <div class="facts">${(s.binnen||[]).length?`<div><span class="label">Binnen zaaien</span><b>${s.binnen.map(m=>M[m-1]).join(', ')}</b></div>`:''}${(s.buiten||[]).length?`<div><span class="label">Buiten zaaien</span><b>${s.buiten.map(m=>M[m-1]).join(', ')}</b></div>`:''}${(s.oogst||[]).length?`<div><span class="label">Oogst</span><b>${s.oogst.map(m=>M[m-1]).join(', ')}</b></div>`:''}<div><span class="label">Herinnering</span><b>${s.herinnering?'aan':'uit'}</b></div></div>
+   <div class="facts">${famOf(s)?`<div><span class="label">Botanische familie</span><b>${esc(famShort(famOf(s)))} <i class="muted" style="font-weight:400">${esc((famOf(s).match(/\((.*)\)/)||[])[1]||'')}</i></b></div>`:''}${(s.binnen||[]).length?`<div><span class="label">Binnen zaaien</span><b>${s.binnen.map(m=>M[m-1]).join(', ')}</b></div>`:''}${(s.buiten||[]).length?`<div><span class="label">Buiten zaaien</span><b>${s.buiten.map(m=>M[m-1]).join(', ')}</b></div>`:''}${(s.oogst||[]).length?`<div><span class="label">Oogst</span><b>${s.oogst.map(m=>M[m-1]).join(', ')}</b></div>`:''}<div><span class="label">Herinnering</span><b>${s.herinnering?'aan':'uit'}</b></div></div>
    ${(()=>{const g=growInfo(s),l=growList(g);return (l.length?`<div class="growfacts">${l.map(([k,v])=>`<div><span class="label">${k}</span><b>${esc(v)}</b></div>`).join('')}</div>`:'')+(g.notitie?`<div class="note">${esc(g.notitie).replace(/\n/g,'<br>')}</div>`:'')})()}
    <div style="display:grid;gap:8px"><span class="label">Recepten met ${esc(s.groente.toLowerCase())}</span>
    ${rs.length?`<div class="list">${rs.map(r=>`<button class="li" data-act="recipe" data-id="${r.id}"><div class="t"><b>${esc(r.titel)}</b><small>${esc(r.categorie||'')}${r.tijd?' · '+esc(r.tijd):''}</small></div><span class="muted">→</span></button>`).join('')}</div>`:`<div class="muted">Nog geen recept met ${esc(s.groente.toLowerCase())}. Voeg zoektermen toe bij dit zakje (bv. “tuinkruiden”) of maak een recept.</div>`}</div>
@@ -495,7 +533,7 @@ function shareText(r){
   L.push('','Uit het receptenboek van Tuin & Tafel');return L.join('\n');
 }
 function seedShareText(s){
-  const g=growInfo(s);const L=[seedName(s)];if(s.leverancier)L.push('Leverancier: '+s.leverancier);
+  const g=growInfo(s);const L=[seedName(s)];if(famOf(s))L.push('Familie: '+famOf(s));if(s.leverancier)L.push('Leverancier: '+s.leverancier);
   const sow=[];
   if((s.binnen||[]).length)sow.push('Binnen zaaien: '+s.binnen.map(m=>MF[m-1]).join(', '));
   if((s.buiten||[]).length)sow.push('Buiten zaaien: '+s.buiten.map(m=>MF[m-1]).join(', '));
@@ -538,7 +576,7 @@ async function printItem(k,id){
      <div><h2>Bereiding</h2><ol>${(r.stappen||[]).map(l=>`<li>${esc(l)}</li>`).join('')}</ol></div></div>
      ${r.nota?`<div class="pnote"><b>Nota</b><br>${esc(r.nota).replace(/\n/g,'<br>')}</div>`:''}${foot}`;
   }else{const s=S.seeds.find(x=>x.id===id);if(!s)return;const g=growInfo(s),gl=growList(g),rs=recipesForSeed(s);
-    html=`<div class="ph">Zaadzakje${s.leverancier?' · '+esc(s.leverancier):''}</div><h1>${esc(s.groente)}</h1>${s.ras?`<div class="sub">‘${esc(s.ras)}’</div>`:''}
+    html=`<div class="ph">Zaadzakje${famOf(s)?' · '+esc(famOf(s)):''}${s.leverancier?' · '+esc(s.leverancier):''}</div><h1>${esc(s.groente)}</h1>${s.ras?`<div class="sub">‘${esc(s.ras)}’</div>`:''}
      ${s.foto?`<img class="pimg" src="${esc(s.foto.url)}" alt="">`:''}
      ${strip(s,true)}${legend}
      <div class="pfacts">${(s.binnen||[]).length?`<div><span class="ph">Binnen zaaien</span><b>${s.binnen.map(m=>M[m-1]).join(', ')}</b></div>`:''}${(s.buiten||[]).length?`<div><span class="ph">Buiten zaaien</span><b>${s.buiten.map(m=>M[m-1]).join(', ')}</b></div>`:''}${(s.oogst||[]).length?`<div><span class="ph">Oogst</span><b>${s.oogst.map(m=>M[m-1]).join(', ')}</b></div>`:''}${s.kiemkrachtTot?`<div><span class="ph">Kiemkracht tot</span><b>${esc(s.kiemkrachtTot)}</b></div>`:''}</div>
@@ -647,6 +685,7 @@ function seedForm(s){
    <label>Eenheid<select id="s_eenh">${['zaden','gram','zakjes','plantjes','bollen'].map(o=>`<option ${o===s.eenheid?'selected':''}>${o}</option>`).join('')}</select></label>
    <label>Melding onder<input id="s_min" type="number" min="0" step="any" value="${esc(s.minimum)}"></label>
    <label>Kiemkracht tot (jaar)<input id="s_kiem" inputmode="numeric" value="${esc(s.kiemkrachtTot)}"></label></div>
+   <label>Botanische familie <span class="muted" style="font-weight:400">laat op "automatisch" om ze te laten herkennen uit de naam</span><select id="s_fam"><option value="">Automatisch${guessFam(s.groente)?' → '+esc(famShort(guessFam(s.groente))):''}</option>${[...FAM_LABELS,...(s.familie&&!FAM_LABELS.includes(s.familie)?[s.familie]:[])].map(f=>`<option ${f===s.familie?'selected':''}>${esc(f)}</option>`).join('')}</select></label>
    <label>Binnen zaaien</label>${monthPick('mp_in','in',s.binnen)}
    <label>Buiten zaaien</label>${monthPick('mp_out','out',s.buiten)}
    <label>Oogst</label>${monthPick('mp_h','harv',s.oogst)}
@@ -919,7 +958,7 @@ async function addVeg(name){
   const v=VEG.find(x=>x.n===name);if(!v)return false;
   if(S.seeds.some(s=>norm(s.groente)===norm(v.n))){toast(v.n+' staat al in je moestuin');return false}
   return await save('seeds',null,{groente:v.n,ras:'',leverancier:'',aantal:0,eenheid:'zaden',minimum:0,binnen:v.b,buiten:v.z,oogst:v.o,
-    kiemkrachtTot:'',herinnering:true,zoektermen:v.w.filter(w=>norm(w)!==norm(v.n)).join(', '),
+    familie:guessFam(v.n),kiemkrachtTot:'',herinnering:true,zoektermen:v.w.filter(w=>norm(w)!==norm(v.n)).join(', '),
     notitie:'Standaard zaaitijden, door de app ingevuld. Pas ze aan naar wat op je zaadzakje staat.',voorbeeld:false},true);
 }
 function vegBox(r){
@@ -981,7 +1020,7 @@ function render(){
 function route(){const h=location.hash.slice(1);S.view=['recepten','moestuin','kalender'].includes(h)?h:'vandaag';closeSheet();render();window.scrollTo(0,0)}
 addEventListener('hashchange',route);
 
-document.addEventListener('input',e=>{if(e.target.closest&&e.target.closest('fieldset.grow'))syncOpts();if(e.target.id==='q'){S.q=e.target.value;render()}if(e.target.id==='sq'){S.sq=e.target.value;render()}});
+document.addEventListener('input',e=>{if(e.target.id==='s_groente'){const o=$('#s_fam option[value=""]'),g=guessFam(e.target.value);if(o)o.textContent='Automatisch'+(g?' → '+famShort(g):'')}if(e.target.closest&&e.target.closest('fieldset.grow'))syncOpts();if(e.target.id==='q'){S.q=e.target.value;render()}if(e.target.id==='sq'){S.sq=e.target.value;render()}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('#layer').innerHTML)closeSheet()});
 document.addEventListener('click',async e=>{
   const ob=e.target.closest('.opts button');if(ob){e.preventDefault();const o=ob.parentElement,inp=document.getElementById(o.dataset.target);
@@ -998,6 +1037,7 @@ document.addEventListener('click',async e=>{
   if(a==='newSeed')return seedForm();
   if(a==='editSeed')return seedForm(S.seeds.find(s=>s.id===id));
   if(a==='cat'){S.cat=el.dataset.v;return render()}
+  if(a==='fam'){S.fam=S.fam===el.dataset.v?'':el.dataset.v;return render()}
   if(a==='catAdd'){const inp=$('#cat_new');if(!inp.value.trim()){inp.focus();toast('Typ eerst een naam voor de categorie');return}if(await addCat(inp.value))render();return}
   if(a==='cats'){catSheet();setTimeout(()=>$('#cat_new')?.focus(),50);return}
   if(a==='catDefaults'){el.disabled=true;for(const c of DEFCATS)await addCat(c,true);toast('Standaardcategorieën toegevoegd');render();return}
@@ -1072,7 +1112,7 @@ document.addEventListener('submit',async e=>{
     const num=v=>v===''?0:Number(v);
     const d={groente:$('#s_groente').value.trim(),ras:$('#s_ras').value.trim(),leverancier:$('#s_lev').value.trim(),aantal:num($('#s_aantal').value),eenheid:$('#s_eenh').value,minimum:num($('#s_min').value),
       kiemkrachtTot:$('#s_kiem').value.trim(),binnen:picked('mp_in'),buiten:picked('mp_out'),oogst:picked('mp_h'),herinnering:$('#s_her').checked,zoektermen:$('#s_zoek').value.trim(),notitie:$('#s_not').value.trim(),voorbeeld:false,
-      zaaidiepte:$('#s_diep').value.trim(),licht:$('#s_licht').value.trim(),afstandPlant:noCm($('#s_apl').value),afstandRij:noCm($('#s_arij').value),standplaats:$('#s_stand').value.trim(),hoogte:noCm($('#s_hoog').value),foto:f.foto||null};
+      familie:$('#s_fam').value,zaaidiepte:$('#s_diep').value.trim(),licht:$('#s_licht').value.trim(),afstandPlant:noCm($('#s_apl').value),afstandRij:noCm($('#s_arij').value),standplaats:$('#s_stand').value.trim(),hoogte:noCm($('#s_hoog').value),foto:f.foto||null};
     if(!d.groente)return;const ok=await save('seeds',f.id,d);if(ok){S.form=null;closeSheet();render();showSeed(ok)}
   }
 });
